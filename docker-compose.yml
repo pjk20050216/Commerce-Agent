@@ -1,0 +1,87 @@
+# ============================================================
+# 多智能体跨境电商助手 — 独立部署
+# 启动: docker compose up -d
+# 停止: docker compose down
+# ============================================================
+
+services:
+  # ── 后端 API ──
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cbcf-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      PORT: "8000"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cbcf
+      REDIS_URL: redis://redis:6379/0
+      EMBEDDING_PROVIDER: local
+      EMBEDDING_MODEL: models/BAAI/bge-large-zh
+      HF_ENDPOINT: https://hf-mirror.com
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./output:/app/output
+      - ./models:/app/models
+
+  # ── 前端 (Nginx) ──
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: cbcf-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - app
+
+  # ── PostgreSQL 16 + pgvector ──
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: cbcf-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cbcf
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis ──
+  redis:
+    image: redis:7-alpine
+    container_name: cbcf-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  redis_data:

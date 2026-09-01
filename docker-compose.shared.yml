@@ -1,0 +1,38 @@
+# ============================================================
+# 多智能体跨境电商助手 — 共享模式（依赖 ait-share-docker）
+# 前提: 先启动共享基础设施
+#   docker compose -f D:\ait-code\ait-share-docker\docker-compose.yml up -d
+# 本项目启动:
+#   docker compose -f docker-compose.shared.yml up -d
+# ============================================================
+
+services:
+  # ── 后端 API ──
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cbcf-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@host.docker.internal:5432/cbcf
+      REDIS_URL: redis://host.docker.internal:6379/0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./output:/app/output
+
+  # ── 前端 (Nginx) ──
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: cbcf-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - app
