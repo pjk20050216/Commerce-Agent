@@ -1,6 +1,6 @@
 # AGENTS.md - 项目架构文档
 
-> **项目名称**: 多智能体跨境电商助手
+> **项目名称**: 多智能体电商购物助手
 > **版本**: 0.2.0
 > **最后更新**: 2026-11-09
 
@@ -10,7 +10,7 @@
 
 ### 1.1 项目定位
 
-基于 LangChain/LangGraph 构建的**多智能体跨境电商助手**。系统通过多个专业 Agent 协同工作，实现商品营销图片和视频的自动化生成、合规检查与多平台刊登。
+基于 LangChain/LangGraph 构建的**多智能体电商购物助手**。系统通过多个专业 Agent 协同工作，实现商品营销图片和视频的自动化生成、合规检查与多平台刊登。
 
 ### 1.2 核心能力
 
@@ -119,7 +119,7 @@ AssetCollection (最终产出)
 ### 3.1 目录结构
 
 ```
-multi-agent-cross-border-assistant/
+multi-agent-ecommerce-shopping-assistant/
 ├── main.py                 # FastAPI 应用入口
 ├── run_workflow.py         # CLI 工作流运行脚本
 ├── pyproject.toml          # 项目配置 (依赖、工具配置)
@@ -193,7 +193,7 @@ multi-agent-cross-border-assistant/
 │   └── test_tools/         # 工具测试
 │
 └── documents/              # 开发文档
-    ├── 多智能体跨境电商助手开发计划_2026-09-02.md
+    ├── 多智能体电商购物助手开发计划_2026-09-02.md
     └── 操作文档.md
 ```
 

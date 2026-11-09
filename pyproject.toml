@@ -1,7 +1,7 @@
 [project]
-name = "multi-agent-cross-border-assistant"
+name = "multi-agent-ecommerce-shopping-assistant"
 version = "0.2.0"
-description = "多智能体跨境电商助手 - 多Agent协作的跨境电商内容生成与管理系统"
+description = "多智能体电商购物助手 - 多Agent协作的电商购物内容生成与管理系统"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

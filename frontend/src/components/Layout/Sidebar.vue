@@ -6,7 +6,7 @@
         <el-icon :size="24"><PictureFilled /></el-icon>
       </div>
       <transition name="fade-text">
-        <span v-show="!isCollapse" class="logo-text">多智能体跨境电商助手</span>
+        <span v-show="!isCollapse" class="logo-text">多智能体电商购物助手</span>
       </transition>
     </div>
 

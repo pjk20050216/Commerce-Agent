@@ -96,7 +96,7 @@ def main():
 
     # Text content simulating a product showcase
     text_lines = [
-        "多智能体跨境电商助手",
+        "多智能体电商购物助手",
         "AI-Powered Product Visual Generator",
         "",
         "Product: Anker PowerCore 26800mAh",

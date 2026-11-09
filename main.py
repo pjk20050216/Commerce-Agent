@@ -1,7 +1,7 @@
 """
-多智能体跨境电商助手 - FastAPI 应用入口。
+多智能体电商购物助手 - FastAPI 应用入口。
 
-提供 RESTful API 和 WebSocket 接口，支持多 Agent 协作的跨境电商内容生成与管理。
+提供 RESTful API 和 WebSocket 接口，支持多 Agent 协作的电商购物内容生成与管理。
 """
 #
 
@@ -90,8 +90,8 @@ def validate_cors_settings(settings: Settings) -> None:
 # 创建 FastAPI 应用
 settings = get_settings()
 app = FastAPI(
-    title="多智能体跨境电商助手 API",
-    description="基于 LangChain/LangGraph 的多 Agent 多智能体跨境电商助手",
+    title="多智能体电商购物助手 API",
+    description="基于 LangChain/LangGraph 的多 Agent 多智能体电商购物助手",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -162,7 +162,7 @@ async def root() -> dict:
         欢迎信息。
     """
     return {
-        "message": "欢迎使用多智能体跨境电商助手 API",
+        "message": "欢迎使用多智能体电商购物助手 API",
         "docs": "/docs",
         "health": "/api/v1/health",
     }

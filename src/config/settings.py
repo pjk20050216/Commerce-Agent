@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     langchain_tracing_v2: bool = Field(default=False, description="启用 LangSmith 追踪")
     langchain_api_key: str = Field(default="", description="LangSmith API Key")
     langchain_project: str = Field(
-        default="multi-agent-cross-border-assistant", description="LangSmith 项目名"
+        default="multi-agent-ecommerce-shopping-assistant", description="LangSmith 项目名"
     )
 
     # ==================== 服务配置 ====================
@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0", description="Redis 连接 URL")
     redis_prefix: str = Field(
         default="cbcf:", description="Redis Key 前缀"
-    )  # multi-agent-cross-border-assistant
+    )  # multi-agent-ecommerce-shopping-assistant
 
     # ==================== PostgreSQL 配置 ====================
     postgres_host: str = Field(default="localhost", description="PostgreSQL 主机")
@@ -198,7 +198,7 @@ class Settings(BaseSettings):
         default=False, description="是否允许 WebSocket 查询参数传递 token"
     )
     auth_jwt_secret_key: str = Field(
-        default="multi-agent-cross-border-assistant-jwt-secret-change-in-production",
+        default="multi-agent-ecommerce-shopping-assistant-jwt-secret-change-in-production",
         description="JWT 签名密钥（生产环境务必修改）",
     )
     auth_jwt_expire_minutes: int = Field(

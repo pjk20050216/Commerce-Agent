@@ -172,7 +172,7 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const title = to.meta.title as string
   if (title) {
-    document.title = `${title} - 多智能体跨境电商助手`
+    document.title = `${title} - 多智能体电商购物助手`
   }
 
   // 认证页面无需登录

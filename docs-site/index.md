@@ -1,4 +1,4 @@
-# 多智能体跨境电商助手 文档
+# 多智能体电商购物助手 文档
 
 基于 LangGraph 的多 Agent 协作商品视觉生成与刊登系统。
 
@@ -25,5 +25,5 @@
 ## 更多资源
 
 - [API 文档](http://localhost:8000/docs) — FastAPI 自动生成的交互式 API 文档
-- [CHANGELOG](https://github.com/23372/multi-agent-cross-border-assistant/blob/master/CHANGELOG.md) — 版本变更记录
-- [CONTRIBUTING](https://github.com/23372/multi-agent-cross-border-assistant/blob/master/CONTRIBUTING.md) — 贡献指南
+- [CHANGELOG](https://github.com/23372/multi-agent-ecommerce-shopping-assistant/blob/master/CHANGELOG.md) — 版本变更记录
+- [CONTRIBUTING](https://github.com/23372/multi-agent-ecommerce-shopping-assistant/blob/master/CONTRIBUTING.md) — 贡献指南

@@ -6,7 +6,7 @@
           <el-icon :size="32"><PictureFilled /></el-icon>
         </div>
         <h2>注册</h2>
-        <p class="auth-subtitle">创建你的工作空间，开始跨境电商之旅</p>
+        <p class="auth-subtitle">创建你的工作空间，开始电商购物之旅</p>
       </div>
 
       <el-form

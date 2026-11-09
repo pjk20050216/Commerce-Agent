@@ -64,7 +64,7 @@ async def api_root() -> dict:
         API 基本信息。
     """
     return {
-        "name": "多智能体跨境电商助手 API",
+        "name": "多智能体电商购物助手 API",
         "version": "0.1.0",
         "docs": "/docs",
     }

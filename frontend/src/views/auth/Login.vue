@@ -6,7 +6,7 @@
           <el-icon :size="32"><PictureFilled /></el-icon>
         </div>
         <h2>登录</h2>
-        <p class="auth-subtitle">多智能体跨境电商助手</p>
+        <p class="auth-subtitle">多智能体电商购物助手</p>
       </div>
 
       <el-form

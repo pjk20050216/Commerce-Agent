@@ -2001,7 +2001,7 @@ wheels = [
 ]
 
 [[package]]
-name = "multi-agent-cross-border-assistant"
+name = "multi-agent-ecommerce-shopping-assistant"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [

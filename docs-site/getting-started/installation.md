@@ -12,8 +12,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/23372/multi-agent-cross-border-assistant.git
-cd multi-agent-cross-border-assistant
+git clone https://github.com/23372/multi-agent-ecommerce-shopping-assistant.git
+cd multi-agent-ecommerce-shopping-assistant
 
 # 配置环境变量
 cp .env.example .env
@@ -41,8 +41,8 @@ Docker Compose 包含以下服务：
 ### 后端
 
 ```bash
-git clone https://github.com/23372/multi-agent-cross-border-assistant.git
-cd multi-agent-cross-border-assistant
+git clone https://github.com/23372/multi-agent-ecommerce-shopping-assistant.git
+cd multi-agent-ecommerce-shopping-assistant
 
 # 安装 Python 依赖（使用 uv）
 uv sync
@@ -170,7 +170,7 @@ echo -n "your-secret-token" | sha256sum
 |------|--------|------|
 | `LANGCHAIN_TRACING_V2` | `false` | 启用 LangSmith 追踪 |
 | `LANGCHAIN_API_KEY` | — | LangSmith API Key |
-| `LANGCHAIN_PROJECT` | `multi-agent-cross-border-assistant` | LangSmith 项目名 |
+| `LANGCHAIN_PROJECT` | `multi-agent-ecommerce-shopping-assistant` | LangSmith 项目名 |
 
 ### 降级配置
 
@@ -180,7 +180,7 @@ echo -n "your-secret-token" | sha256sum
 
 ## 优雅降级
 
-多智能体跨境电商助手支持在缺少 API Key 时自动降级：
+多智能体电商购物助手支持在缺少 API Key 时自动降级：
 
 - **无 DashScope API Key** → 图片生成降级为 Mock 占位（标记 `is_mock=True`）
 - **无可灵 AI Key** → 视频生成降级为 Mock 占位（标记 `is_mock=True`）

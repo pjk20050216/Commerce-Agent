@@ -1,8 +1,8 @@
-site_name: 多智能体跨境电商助手
-site_description: 多智能体跨境电商助手 - 多Agent协作的跨境电商内容生成与管理系统
+site_name: 多智能体电商购物助手
+site_description: 多智能体电商购物助手 - 多Agent协作的电商购物内容生成与管理系统
 site_url: http://localhost:8000
-repo_url: https://github.com/23372/multi-agent-cross-border-assistant
-repo_name: multi-agent-cross-border-assistant
+repo_url: https://github.com/23372/multi-agent-ecommerce-shopping-assistant
+repo_name: multi-agent-ecommerce-shopping-assistant
 
 theme:
   name: material

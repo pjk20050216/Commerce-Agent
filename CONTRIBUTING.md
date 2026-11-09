@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢你对多智能体跨境电商助手的关注！我们欢迎各种形式的贡献。
+感谢你对多智能体电商购物助手的关注！我们欢迎各种形式的贡献。
 
 ## 目录
 
@@ -20,11 +20,11 @@
 
 ### 报告 Bug
 
-使用 [Bug Report](https://github.com/23372/multi-agent-cross-border-assistant/issues/new?template=bug_report.md) 模板提交 Issue。
+使用 [Bug Report](https://github.com/23372/multi-agent-ecommerce-shopping-assistant/issues/new?template=bug_report.md) 模板提交 Issue。
 
 ### 提交功能请求
 
-使用 [Feature Request](https://github.com/23372/multi-agent-cross-border-assistant/issues/new?template=feature_request.md) 模板提交 Issue。
+使用 [Feature Request](https://github.com/23372/multi-agent-ecommerce-shopping-assistant/issues/new?template=feature_request.md) 模板提交 Issue。
 
 ### 提交代码
 
@@ -44,8 +44,8 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/23372/multi-agent-cross-border-assistant.git
-cd multi-agent-cross-border-assistant
+git clone https://github.com/23372/multi-agent-ecommerce-shopping-assistant.git
+cd multi-agent-ecommerce-shopping-assistant
 
 # 2. 安装 Python 依赖
 uv sync
@@ -77,8 +77,8 @@ uv run mypy src/
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/23372/multi-agent-cross-border-assistant.git
-cd multi-agent-cross-border-assistant
+git clone https://github.com/23372/multi-agent-ecommerce-shopping-assistant.git
+cd multi-agent-ecommerce-shopping-assistant
 
 # 2. 配置环境变量
 cp .env.example .env
