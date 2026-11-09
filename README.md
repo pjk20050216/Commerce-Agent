@@ -1,417 +1,381 @@
-<div align="center">
+# 多智能体跨境电商助手
 
-# 🤖 多智能体跨境电商助手
+把「一个模型对话式生成几张图」升级为面向**跨境电商内容生产与多平台刊登**的多 Agent 协作运行时：
+LangGraph 状态图编排 7 个专业 Agent，从商品理解、创意策划、视觉设计，到图片/视频生成、质量审核，
+再接入刊登链路完成素材优化、多语言文案、平台合规检查与推送上架；全过程状态可追踪、可恢复、可复盘。
 
-### 从商品分析到多平台刊登，多个 AI Agent 协作完成视觉内容生产——**你能实时看到每个 Agent 的思考与协作过程**
+> 视觉生成、刊登工具、RAG 知识增强、AI 会话追踪共用同一个 FastAPI 服务与同一套多租户数据隔离。
 
-**基于 LangGraph 的多 Agent 协作 · 跨境电商智能融合 · 可观测 Agent 工作台**
+## 为什么需要多 Agent 编排
 
-[![GitHub Repo](https://img.shields.io/badge/GitHub-23372%2Fmulti-agent-cross-border-assistant-blue.svg?logo=github)](https://github.com/23372/multi-agent-cross-border-assistant)
-[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg?logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-teal.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Vue 3](https://img.shields.io/badge/Vue-3.4-42b883.svg?logo=vue.js&logoColor=white)](https://vuejs.org/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-powered-orange.svg)](https://langchain-ai.github.io/langgraph/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+单 Agent 直接对话在跨境电商场景会遇到四个硬问题：
 
-</div>
+| 问题 | 本项目的解法 |
+|---|---|
+| 一次任务十几个步骤，单 Prompt 无法兼顾 | 拆成 7 个 Agent 串行/条件分支，每步只做一件事，提示词互不污染 |
+| 商品分析、创意、出图、审核诉求互相冲突 | 每阶段产出结构化 Pydantic 模型，下游只消费上游结构，不靠自然语言转述 |
+| 图片/视频生成是长耗时异步任务，容易中断 | Redis 持久化任务状态 + WebSocket 实时推送 + 失败降级为 Mock 占位资产 |
+| 刊登到不同平台规则各异（尺寸、字数、禁词） | 平台适配器 + 规则表 + 合规报告，Amazon/eBay/Shopify 各自独立校验 |
 
-> 💡 **一句话介绍**：**多智能体跨境电商助手** 用一张 LangGraph 状态图编排 7+ 个专业 Agent，自动完成跨境电商的商品分析、AI 文案、图片/视频生成、合规检查、多平台刊登全流程；并通过一个 DevTools 风格的可观测工作台，让你实时看到每个 Agent 的提示词、传递参数与协作轨迹。
->
-> 🌐 **GitHub 仓库**：[https://github.com/23372/multi-agent-cross-border-assistant](https://github.com/23372/multi-agent-cross-border-assistant)
+## 核心能力
 
----
+| 能力 | 说明 | 关键实现 |
+|---|---|---|
+| 多 Agent 编排 | Orchestrator → 需求分析 → 创意策划 → 视觉设计 → 图片/视频生成 → 质量审核 | [`src/graph/workflow.py`](src/graph/workflow.py)、[`src/agents/`](src/agents/) |
+| 条件路由 | 按 `image_only` / `video_only` / `image_and_video` 走不同分支；任一阶段失败即短路到 END | [`src/graph/workflow.py`](src/graph/workflow.py) |
+| 状态累加 | 列表字段用 `Annotated[list, add]`，多节点写入不覆盖历史 | [`src/graph/state.py`](src/graph/state.py) |
+| 商品理解 | 卖点提取、类目推荐、目标人群分析，输出 `RequirementReport` | [`src/agents/requirement_analyzer.py`](src/agents/requirement_analyzer.py) |
+| 创意策划 | 主题、视觉风格、配色方案、目标情绪 | [`src/agents/creative_planner.py`](src/agents/creative_planner.py)、[`src/models/creative.py`](src/models/creative.py) |
+| 视觉设计 | 主图/场景图/卖点图提示词 + 视频分镜脚本 | [`src/agents/visual_designer.py`](src/agents/visual_designer.py)、[`src/models/storyboard.py`](src/models/storyboard.py) |
+| 图片生成 | 多模型通道，异步任务 + 回调/轮询，产物落本地或 OSS | [`src/agents/image_generator.py`](src/agents/image_generator.py)、[`src/clients/`](src/clients/) |
+| 视频生成 | 分镜转视频，JWT 鉴权 + 异步轮询 | [`src/agents/video_generator.py`](src/agents/video_generator.py)、[`src/clients/kling_video_client.py`](src/clients/kling_video_client.py) |
+| 质量审核 | 清晰度/构图/色彩/相关性四维评分与问题清单 | [`src/agents/quality_reviewer.py`](src/agents/quality_reviewer.py)、[`src/models/assets.py`](src/models/assets.py) |
+| 多平台刊登 | 商品导入 → 素材优化 + 文案生成（并行）→ 合规检查 → 推送 | [`src/graph/listing_workflow.py`](src/graph/listing_workflow.py)、[`src/agents/listing_*.py`](src/agents/) |
+| 平台适配器 | Amazon（含 US/UK/JP/DE 分站）、eBay、Shopify，可注册可扩展 | [`src/agents/listing_platform_adapter.py`](src/agents/listing_platform_adapter.py)、[`src/agents/listing_amazon_adapter.py`](src/agents/listing_amazon_adapter.py) |
+| 合规检查 | 广告法禁词 + 平台规则（主图白底、尺寸、标题字数、五点描述） | [`src/agents/listing_compliance_checker.py`](src/agents/listing_compliance_checker.py)、[`src/agents/listing_compliance_rules.py`](src/agents/listing_compliance_rules.py) |
+| RAG 知识增强 | 品牌规范、类目知识、成功案例、合规规则检索注入 Agent 上下文 | [`src/rag/`](src/rag/)、[`src/agents/rag_*.py`](src/agents/) |
+| 知识库 Agent | 查询分析 → 策略路由 → 混合检索 → RRF 融合 → 答案生成 | [`src/knowledge/agent_workflow.py`](src/knowledge/agent_workflow.py) |
+| 知识图谱 | 文档摄入抽取实体/关系，内存图谱 + 文档入库 | [`src/knowledge/graph.py`](src/knowledge/graph.py)、[`src/knowledge/ingestion.py`](src/knowledge/ingestion.py) |
+| Agent 可观测 | DAG 流程图 + 提示词轨迹 + 输入输出 + 子调用 + Token/费用 | [`frontend/src/components/workbench/`](frontend/src/components/workbench/) |
+| 实时推送 | 任务状态经 WebSocket 推送前端，无需轮询 | [`src/api/router/tasks.py`](src/api/router/tasks.py) |
+| 多租户隔离 | 全部查询按 `tenant_id` 过滤，API Token（SHA256 + Scope）鉴权 | [`src/auth/`](src/auth/)、[`src/db/repository.py`](src/db/repository.py) |
+| 模型厂商管理 | DB 驱动 + Settings 回退，支持运行时切换与连通性测试 | [`src/api/router/model_providers.py`](src/api/router/model_providers.py)、[`src/clients/provider_factory.py`](src/clients/provider_factory.py) |
+| AI 会话追踪 | Token 消耗、双币种费用估算、按模型/Agent 分解 | [`src/api/router/conversation.py`](src/api/router/conversation.py)、[`src/db/conversation_models.py`](src/db/conversation_models.py) |
 
-## 📑 目录
-
-- [✨ 这是什么](#-这是什么)
-- [📸 效果展示](#-效果展示)
-- [🚀 核心特性](#-核心特性)
-- [🏗️ 系统架构](#-系统架构)
-- [⚡ 快速开始](#-快速开始)
-- [⚙️ 环境变量](#-环境变量)
-- [📁 项目结构](#-项目结构)
-- [🛠️ 技术栈](#-技术栈)
-- [🧪 开发与测试](#-开发与测试)
-- [🗺️ 路线图](#-路线图)
-- [📄 许可证](#-许可证)
-
----
-
-## ✨ 这是什么
-
-多智能体跨境电商助手是一个面向跨境电商的 **多 Agent 协作系统**，利用 LangGraph 状态图驱动多个专业 Agent 协同工作，自动完成从商品分析到视觉内容生成、合规检查、多平台刊登的全流程。
-
-- 📦 **商品信息分析** - Agent 自动提取卖点、分析竞品、识别目标人群
-- ✍️ **AI 文案生成** - 多语言商品描述、平台风格适配、LLM 降级策略
-- 🖼️ **图片生成** - 多模型支持，异步调用与回调模式
-- 🎬 **视频生成** - 分镜设计 + 视频生成
-- ✅ **合规检查** - 广告法禁词检测、平台规则验证
-- 🌐 **多平台刊登** - 多平台适配器，凭证加密存储
-- 📚 **RAG 知识增强** - PGVector 向量检索 + Graph RAG + CategoryMemory
-- 📊 **AI 会话追踪** - Token 消耗统计、双币种费用预算、内容检索
-- 🔬 **Agent 可观测工作台** - DAG 流程图 + 提示词轨迹 + 实时协作视图
-- 🔌 **多模型厂商切换** - 支持多种 LLM/图片/视频厂商丝滑切换
-
-> 💡 **适合谁？** 跨境电商从业者、AI 应用开发者、LangChain/LangGraph 学习者、对 Agent 可观测性感兴趣的研究者。
-
----
-
-## 📸 效果展示
-
-> 🎬 **Agent 可观测工作台**——这是平台最与众不同的部分。
-
-**DAG 流程图视图**：每个 Agent 作为一个节点，实时显示执行状态（等待 / 运行中 / 完成 / 失败），节点间连线展示数据流向。
-
-**DevTools 风格详情面板**：点击任意节点，右侧分 4 个 Tab 查看该 Agent 的完整工作过程：
-- **概览** - 状态、耗时、Token 消耗、费用、上下游 Agent
-- **提示词** - 完整的 System / Human Prompt（不截断，可一键复制）
-- **输入输出** - 该 Agent 接收的参数与产出的结构化结果
-- **子调用** - LLM / 工具调用的详细记录
-
-**实时协作**：通过 WebSocket 推送，Agent 状态变化即时反映到流程图，无需刷新。
+## 架构
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  🤖 Agent 工作台                            ● WS 已连接      │
-│  任务 task_xxxx · 运行中 · 进度 ▓▓▓▓▓░░░░ 62%               │
-├──────────────────────────────┬──────────────────────────────┤
-│                              │ [概览] [提示词] [IO] [子调用] │
-│        ┌──────────┐          │                              │
-│        │ Orchestr │ ✅        │  Agent: CreativePlanner      │
-│        └────┬─────┘          │  状态: ● 运行中 (脉冲)        │
-│             │                 │  耗时: 3.2s · Token: 1,840   │
-│        ┌────▼─────┐          │  费用: ¥0.018                │
-│        │ ReqAnaly │ ✅        │                              │
-│        └────┬─────┘          │  📥 上游: RequirementAnalyzer│
-│             │                 │  📤 下游: VisualDesigner     │
-│        ┌────▼─────┐          │                              │
-│        │ Creative │ 🔄 运行中 │  System Prompt:             │
-│        │ Planner  │ ●●●       │  你是一位资深跨境电商创意... │
-│        └────┬─────┘          │  [完整展示 · 📋 复制]         │
-│             │                 │                              │
-│        ┌────▼─────┐          │                              │
-│        │ VisualD  │ ⏳ 等待   │                              │
-│        └──────────┘          │                              │
-└──────────────────────────────┴──────────────────────────────┘
+浏览器 / 管理后台（Vue 3 + Element Plus，16 个页面）
+        │  REST + WebSocket
+        ▼
+FastAPI（uvicorn）
+        │
+        ├── /api/v1/products /tasks /assets /dashboard     商品、任务、资产、仪表盘
+        ├── /api/v1/listing/*                              刊登、合规、适配器配置
+        ├── /api/v1/knowledge/* /evaluation/*              知识库、图谱、RAG 评估
+        ├── /api/v1/ai/* /model-providers                  会话追踪、厂商管理
+        └── /api/v1/tasks/{id}/ws                          WebSocket 实时状态
+        │
+        ▼
+┌───────────────── LangGraph 运行时 ─────────────────┐
+│  视觉生成工作流                                     │
+│    Orchestrator → RequirementAnalyzer →            │
+│    CreativePlanner → VisualDesigner →              │
+│    [ImageGenerator | VideoGenerator] →             │
+│    QualityReviewer → END                           │
+│                                                     │
+│  刊登工作流                                         │
+│    ImportProduct → [AssetOptimizer ‖ Copywriter] → │
+│    ComplianceChecker → PlatformPush → END          │
+│                                                     │
+│  知识库工作流                                       │
+│    QueryAnalyzer → StrategyRouter →                │
+│    HybridRetriever → RRF Fuser → Answer            │
+└─────────────────────────────────────────────────────┘
+        │                    │                    │
+        ▼                    ▼                    ▼
+   LLM / 图片 / 视频厂商   PostgreSQL + PGVector   Redis
+   （OpenAI 兼容协议）      向量、业务、图谱、会话    任务状态、缓存
 ```
 
----
-
-## 🚀 核心特性
-
-| 特性 | 描述 |
-|------|------|
-| 🔬 **Agent 可观测工作台** | DAG 流程图（AntV G6）+ 提示词轨迹 + WebSocket 实时协作 |
-| 🤖 **多 Agent 协作** | 7 个视觉生成 Agent + 4 个刊登 Agent + 3 个 RAG 增强 Agent + 3 个知识库 Agent |
-| 🔄 **LangGraph 工作流** | 条件路由、并行执行、状态检查点、stream 模式实时回调、RAG 动态注入 |
-| 🖼️ **图片生成** | 多模型支持，async_call + wait 模式 |
-| 🎬 **视频生成** | HS256 JWT 鉴权 + 异步任务轮询 |
-| 📚 **RAG 增强** | PGVector + BGE-large-zh / 云端 Embedding 双通道 |
-| 🕸️ **Graph RAG** | 知识图谱实体/边 + CategoryMemory + 混合检索（RRF 融合） |
-| ✅ **合规检查** | 广告法禁词检测 + 平台规则验证 |
-| 🌐 **多平台刊登** | 多电商平台适配器 |
-| 🔄 **多模型通道** | OpenAI 兼容协议 + 各厂商原生 SDK |
-| 📊 **会话追踪** | Token 统计、双币种（USD/CNY）费用预算、内容搜索 |
-| 🔐 **认证鉴权** | API Token（SHA256 + Scope 权限）+ 多租户隔离 |
-| 🛡️ **优雅降级** | 无 API Key 时自动 Mock，LLM 降级链 |
-| 🎨 **管理后台** | Vue 3 + Element Plus，15 个页面 |
-| 🔌 **多厂商切换** | 模型厂商丝滑切换系统，支持 DB 驱动 + Settings 回退 |
-
----
-
-## 🏗️ 系统架构
+一次典型生成任务：
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                     Vue 3 管理后台 (15 页面)                  │
-│  仪表盘 │ 商品管理 │ 任务管理 │ 知识库 │ 刊登工具 │ AI 会话    │
-│         │          │ 可观测工作台 │          │                │
-└──────────────────────────┬───────────────────────────────────┘
-                           │ REST API / WebSocket
-┌──────────────────────────▼───────────────────────────────────┐
-│                     FastAPI API 层 (40+ 端点)                 │
-│  认证: API Token (SHA256 + Scope)    租户隔离: tenant_id      │
-└──────────────────────────┬───────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────┐
-│                   LangGraph 工作流引擎                         │
-│                                                               │
-│  视觉生成工作流:                                                │
-│  Orchestrator -> ReqAnalyzer -> CreativePlanner -> VisualDesigner│
-│       -> [ImageGen | VideoGen] -> QualityReviewer -> END          │
-│                                                               │
-│  刊登工作流:                                                    │
-│  ImportProduct -> [AssetOptimizer | Copywriter] -> Compliance   │
-│                                                               │
-│  知识库 Agent 工作流:                                           │
-│  QueryAnalyzer -> StrategyRouter -> HybridRetriever -> Fuser      │
-└───────┬──────────────┬──────────────┬────────────────────────┘
-        │              │              │
- ┌──────▼──────┐ ┌─────▼─────┐ ┌─────▼──────┐
- │   LLM 厂商   │ │  图片厂商  │ │  视频厂商   │
- │ (OpenAI兼容) │ │  (多模型)  │ │  (分镜设计)  │
- └──────┬──────┘ └─────┬─────┘ └─────┬──────┘
-        │              │              │
- ┌──────▼──────────────▼──────────────▼────────┐
- │  PostgreSQL + PGVector  │  Redis  │  Storage │
- │  15+ 表 (向量/图谱/记忆)  │  缓存   │  本地/OSS │
- └─────────────────────────────────────────────┘
+POST /api/v1/tasks
+  → 校验商品存在、写入任务记录（status=pending）
+  → 后台 asyncio 任务执行 LangGraph 状态图
+  → Orchestrator 初始化状态
+  → RequirementAnalyzer 提取卖点 → CreativePlanner 出方案
+  → VisualDesigner 产出提示词与分镜
+  → ImageGenerator / VideoGenerator 调用厂商（无 Key 则降级 Mock）
+  → QualityReviewer 打分与问题清单
+  → 资产落库（assets 表）+ 任务置为 completed
+  → WebSocket 推送每步状态变化
+  → 前端工作台展示 DAG、提示词、Token 与费用
 ```
 
-> 📊 更详细的类图与时序图见 [`docs/class-diagram.mermaid`](docs/class-diagram.mermaid) 与 [`docs/sequence-diagram.mermaid`](docs/sequence-diagram.mermaid)。
-
----
-
-## ⚡ 快速开始
-
-### 方式一：Windows 一键极简启动（面向学生 / 教学推荐 ⭐⭐⭐⭐⭐）
-
-> 🎓 **专为课堂教学与零门槛体验设计**：无需手动敲击繁杂的命令行，双击即可一键拉起全套平台！
-
-已在项目根目录下提供开箱即用的一键脚本：
-
-| 脚本文件 | 说明 | 适用场景 |
-|---------|------|---------|
-| [**`一键启动.bat`**](一键启动.bat) | 自动检查环境，在独立窗口分别启动后端（`8002`）与前端（`5173`），并**自动在浏览器中弹出平台首页** | **日常上课 / 实验（最常用）** |
-| [**`一键停止.bat`**](一键停止.bat) | 自动扫描并释放 `8002` 与 `5173` 端口占用，干净退出 | 结束实验或出现端口冲突时 |
-| [**`一键初始化环境.bat`**](一键初始化环境.bat) | 自动创建 Conda `cbcf` 虚拟环境、配置清华源并安装 Python 和 npm 所有依赖 | 新学生 / 新电脑首次配置 |
-| [**`学生快速上手指南.md`**](学生快速上手指南.md) | 极简图文指引与常见问题速查 | 直接分发给学生阅读 |
+## 目录结构
 
 ```
-使用极简步骤：
-1.（仅新电脑首次）双击【一键初始化环境.bat】
-2. 双击【一键启动.bat】 -> 浏览器自动弹出 http://localhost:5173/ 即可使用！
-3. 使用完毕后双击【一键停止.bat】退出
+src/
+  agents/                  15 个 Agent（7 视觉生成 + 4 RAG 增强 + 4 刊登）
+    base.py                Agent 基类（LLM 调用、日志、Token 统计）
+    orchestrator.py        编排调度
+    requirement_analyzer.py 需求分析
+    creative_planner.py    创意策划
+    visual_designer.py     视觉设计与分镜
+    image_generator.py     图片生成
+    video_generator.py     视频生成
+    quality_reviewer.py    质量审核
+    rag_*.py               RAG 增强版（需求分析 / 创意策划 / 质量审核 / 图片生成）
+    listing_*.py           刊登链路（导入、素材、文案、合规、适配器、推送、限流、重试）
+  graph/
+    state.py               AgentState 定义（含 RAG 与可观测字段）
+    workflow.py            视觉生成状态图
+    listing_state.py       刊登状态
+    listing_workflow.py    刊登状态图（含并行分支）
+  models/                  商品、创意、分镜、资产、刊登 Pydantic 模型
+  api/
+    router/                14 个路由模块（health/auth/products/tasks/assets/listing/
+                           knowledge/knowledge_graph/evaluation/dashboard/
+                           conversation/model_providers/adapter_config/listing_push）
+    schema/                请求/响应 DTO
+    service/               Redis 客户端、任务管理器、资产落库、会话记录
+  db/                      PostgreSQL 连接、ORM 模型、仓储、向量存储、加密字段
+  rag/                     Embedding、检索器、分块、文档处理、混合检索、重排序、
+                           Query 改写、图谱构建/检索、记忆存储与分类
+  knowledge/               知识图谱、文档摄入、知识库 Agent 工作流
+  auth/                    API Token 鉴权、租户上下文
+  clients/                 通义万象、可灵、OpenAI 兼容 LLM/图片、厂商工厂
+  storage/                 存储抽象、本地实现、工厂
+  config/settings.py       pydantic-settings 配置
+frontend/src/
+  views/                   16 个页面（仪表盘、商品、任务、工作台、知识库、刊登、厂商…）
+  components/workbench/    DAG、详情面板、提示词轨迹、子调用、指标
+  api/ types/ stores/      请求封装、类型定义、Pinia 状态
+tests/                     653 个测试（agents / api / db / graph / rag / knowledge / storage）
+docs-site/                 MkDocs 文档站
 ```
 
----
+## 快速开始
 
-### 方式二：Docker 一键部署
-
-> 🖥️ **目标电脑只需安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)**，一条命令即可把整套平台（后端 + 前端 + PostgreSQL + Redis）跑起来。
+### 1. 安装
 
 ```bash
-# 1. 进入项目目录
-cd multi-agent-cross-border-assistant
+# uv 管理依赖（Windows 可直接双击「一键初始化环境.bat」）
+uv sync
 
-# 2.（首次）准备环境变量文件，按需填入 API Key
-#    不填也能跑：Mock 模式会自动降级生成占位资产
+# 需要本地 RAG（BGE 模型、sentence-transformers）时
+uv sync --extra rag
+```
+
+### 2. 配置
+
+```bash
 cp .env.example .env
-
-# 3. 一键构建并启动（含 PostgreSQL 16 + pgvector + Redis）
-docker compose up -d --build
-
-# 4. 访问
-#   前端:          http://localhost:3000
-#   后端 API 文档:  http://localhost:8000/docs
-#   后端健康检查:   http://localhost:8000/api/v1/health
 ```
 
-> ⏳ **首次启动说明**：
-> - 首次启动会自动下载本地 Embedding 模型（`BAAI/bge-large-zh`，约 **1.3GB**，走 hf-mirror 镜像站），期间 RAG 检索功能暂不可用，其余功能正常；下载失败会自动降级启动，不影响演示。
-> - 后端镜像因内置 `sentence-transformers`（含 PyTorch），体积约 **4–5GB**，首次构建较慢，属正常现象。
-> - 模型与数据库均持久化在 `./models` 卷与 `pgdata`/`redis_data` 卷中，二次启动无需重新下载。
+至少配置一个 LLM/图片/视频厂商密钥（`DASHSCOPE_API_KEY`、`QWEN_API_KEY`、`KLING_ACCESS_KEY` 等）。
+**没有密钥也能跑**：`ALLOW_MOCK_ASSETS=true` 时图片与视频自动降级为 Mock 占位资产，适合本地演示与验收。
 
-<details>
-<summary>共享模式（使用已有 PostgreSQL + Redis，如 ait-share-docker）</summary>
+数据库与 Redis：
 
 ```bash
-# 首次使用需手动启用 pgvector 扩展
-docker exec <postgres容器名> psql -U postgres -d cbcf -c "CREATE EXTENSION IF NOT EXISTS vector;"
+# 仅启动基础设施（PostgreSQL 5432 + pgvector、Redis 6380）
+docker compose up -d postgres redis
 
-docker compose -f docker-compose.shared.yml up -d --build
+# 若使用容器 Redis，需把 .env 的 REDIS_URL 改为 redis://localhost:6380/0
 ```
-</details>
 
-### 方式三：本地手动开发（Conda 命令行模式）
+### 3. 启动
 
 ```bash
-# 0. 前置条件：启动共享 Docker 容器（PostgreSQL + Redis）
-#    如未启动，请先启动或使用 docker-compose.yml 独立部署
-docker start shared-postgres shared-redis 2>/dev/null || echo "请先启动 Docker 容器"
+# 后端（端口 8002，含 /docs）
+uv run python main.py
 
-# 0.1 首次使用需启用 pgvector 扩展
-docker exec shared-postgres psql -U postgres -d cbcf -c "CREATE EXTENSION IF NOT EXISTS vector;"
-
-# 1. 创建并激活 conda 虚拟环境
-conda create -n cbcf python=3.13 -y
-conda activate cbcf
-
-# 2. 进入项目目录，安装后端依赖
-cd multi-agent-cross-border-assistant
-pip install -r requirements.txt
-
-# 3. 配置环境变量
-cp .env.example .env
-# 编辑 .env，至少配置 POSTGRES_PASSWORD 和 REDIS_URL
-# （或直接使用现有 .env，已预配置连接本地 shared-postgres/shared-redis）
-
-# 4. 启动后端 (默认端口 8002)
-python main.py
-
-# 5. 新开终端，启动前端 (默认端口 5174)
-cd frontend
-npm install
-npm run dev
-
-# 6. 访问
-#   前端管理后台:  http://localhost:5174
-#   后端 API 文档: http://localhost:8002/docs
-#   后端健康检查:  http://localhost:8002/api/v1/health
+# 前端（端口 5173）
+cd frontend && npm install && npm run dev
 ```
 
-> 🛡️ **Mock 模式**：`.env` 已默认配置 `ALLOW_MOCK_ASSETS=true`（无 API Key 时自动降级为 Mock 资产）。需要 PostgreSQL 和 Redis 支持数据持久化和 RAG 知识库功能。如仅需体验 Mock 资产生成，可设 `RAG_ENABLED=false`。
+Windows 下可直接双击 **`一键启动.bat`**：自动检查 `.venv` 与前端依赖，分别拉起前后端并打开浏览器；
+**`一键停止.bat`** 负责释放端口。
 
----
+- 管理后台：<http://localhost:5173>
+- 接口文档：<http://localhost:8002/docs>
+- 健康检查：<http://localhost:8002/api/v1/health>
+- 默认账号：`admin / admin123`（由 `scripts/setup_all.bat` 创建）
 
-## ⚙️ 环境变量
-
-### 必填（Mock 模式下可不填）
-
-| 变量 | 说明 |
-|------|------|
-| `QWEN_API_KEY` | LLM API Key（支持 OpenAI 兼容协议） |
-
-### 核心可选
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `LLM_PROVIDER` | `dashscope` | LLM 提供商 |
-| `QWEN_API_BASE` | - | LLM OpenAI 兼容端点 |
-| `DASHSCOPE_API_KEY` | - | 图片生成 API Key |
-| `KLING_ACCESS_KEY` | - | 视频生成 Access Key |
-| `KLING_SECRET_KEY` | - | 视频生成 Secret Key |
-| `EMBEDDING_PROVIDER` | `local` | Embedding 提供商 |
-| `EMBEDDING_MODEL` | `BAAI/bge-large-zh` | 本地 Embedding 模型名称 |
-| `RAG_ENABLED` | `true` | 启用 RAG 知识检索 |
-| `RETRIEVAL_TOP_K` | `5` | 检索返回数量 |
-| `SIMILARITY_THRESHOLD` | `0.7` | 相似度阈值 |
-| `POSTGRES_HOST` | `localhost` | PostgreSQL 主机 |
-| `POSTGRES_PORT` | `5432` | PostgreSQL 端口 |
-| `POSTGRES_USER` | `postgres` | PostgreSQL 用户名 |
-| `POSTGRES_PASSWORD` | - | PostgreSQL 密码 |
-| `POSTGRES_DB` | `cbcf` | PostgreSQL 数据库名 |
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis 连接 URL |
-| `STORAGE_TYPE` | `local` | 存储类型：`local` 或 `oss` |
-| `ALLOW_MOCK_ASSETS` | `true` | 无 API Key 时允许 Mock 降级 |
-
-完整配置见 [`.env.example`](.env.example)。
-
----
-
-## 📁 项目结构
-
-```
-multi-agent-cross-border-assistant/
-├── src/                          # 后端源码
-│   ├── agents/                   # Agent 实现
-│   │   ├── orchestrator.py       #   编排调度 Agent
-│   │   ├── requirement_analyzer.py  # 需求分析 Agent
-│   │   ├── creative_planner.py   #   创意策划 Agent
-│   │   ├── visual_designer.py    #   视觉设计 Agent
-│   │   ├── image_generator.py    #   图片生成 Agent
-│   │   ├── video_generator.py    #   视频生成 Agent
-│   │   ├── quality_reviewer.py   #   质量审核 Agent
-│   │   ├── rag_*.py              #   RAG 增强 Agent (3个)
-│   │   └── listing_*.py          #   刊登 Agent (5个)
-│   ├── graph/                    # LangGraph 状态图与工作流
-│   │   ├── workflow.py           #   视觉生成工作流
-│   │   └── listing_workflow.py   #   刊登工作流
-│   ├── api/                      # FastAPI 路由 + Schema + Service
-│   │   ├── router/               #   路由模块 (12个)
-│   │   ├── schema/               #   请求/响应模型
-│   │   └── service/              #   业务服务
-│   ├── clients/                  # 外部服务客户端
-│   ├── rag/                      # RAG 检索管道
-│   │   ├── retriever.py          #   知识检索器
-│   │   ├── embeddings.py         #   双通道 Embedding
-│   │   └── graph_memory.py       #   Graph RAG 记忆
-│   ├── knowledge/                # 知识图谱 + 混合检索
-│   │   ├── hybrid_retriever.py   #   RRF 融合检索
-│   │   └── agent_workflow.py     #   知识库 Agent 工作流
-│   ├── config/                   # 配置管理 (pydantic-settings)
-│   ├── db/                       # 数据库 (15+ 表)
-│   ├── auth/                     # API Token 认证 + 多租户
-│   ├── models/                   # Pydantic 数据模型
-│   └── storage/                  # 文件存储 (本地/OSS)
-├── frontend/                     # Vue 3 前端
-│   └── src/
-│       ├── views/                # 页面组件 (15个)
-│       ├── components/workbench/ #   Agent 可观测工作台组件
-│       ├── api/                  # API 调用层
-│       ├── types/                # TypeScript 类型
-│       ├── stores/               # Pinia 状态管理
-│       └── styles/               # 全局样式 (CSS 变量设计系统)
-├── tests/                        # 测试用例
-├── docs/                         # 设计文档与图表
-├── docker-compose.yml            # Docker 编排
-├── Dockerfile                    # 后端镜像
-├── Dockerfile.frontend           # 前端镜像
-└── pyproject.toml                # 项目配置
-```
-
----
-
-## 🛠️ 技术栈
-
-| 层级 | 技术 | 版本 |
-|------|------|------|
-| **工作流引擎** | LangChain, LangGraph | langchain==1.3.14, langgraph==1.2.10 |
-| **后端框架** | FastAPI, Pydantic v2, SQLAlchemy 2.0 (async) | pydantic==2.13.4, pydantic-settings==2.14.2 |
-| **语言模型** | OpenAI 兼容协议 + 多厂商 SDK | langchain-openai==1.4.1 |
-| **图片生成** | 多模型支持（异步调用 + 回调模式） | — |
-| **视频生成** | 多模型支持（JWT 鉴权 + 任务轮询） | — |
-| **向量检索** | PGVector, BGE-large-zh（本地 Embedding） | sentence-transformers>=2.2.0 |
-| **图谱检索** | Graph RAG (实体/关系/社区/摘要) | python-igraph>=0.11.0 |
-| **前端框架** | Vue 3, TypeScript, Element Plus, Pinia, AntV G6 | — |
-| **数据库** | PostgreSQL 16 + PGVector, Redis 6 | — |
-| **存储** | 本地文件系统 / 云存储 OSS | — |
-| **部署** | Docker Compose, Nginx | — |
-
----
-
-## 🧪 开发与测试
+### 4. 初始化示例数据
 
 ```bash
-# 运行测试
-python -m pytest
-
-# 带覆盖率报告
-python -m pytest --cov=src --cov-report=html
-
-# 代码格式化
-ruff format .
-
-# Lint 检查
-ruff check .
-
-# 类型检查
-mypy src/
+# 建表、创建开发账号、Seed 厂商与知识库
+# Windows 直接双击运行 scripts\setup_all.bat
+# 其他平台按脚本内的 uv run 命令逐条执行
 ```
 
-详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+## API
 
----
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/health`、`/api/v1/health` | 健康检查 |
+| POST | `/api/v1/auth/register`、`/login` | 注册、登录 |
+| GET | `/api/v1/auth/me` | 当前身份 |
+| GET/POST | `/api/v1/products` | 商品列表 / 创建 |
+| GET/PUT/DELETE | `/api/v1/products/{id}` | 商品详情 / 更新 / 删除 |
+| POST | `/api/v1/products/{id}/images` | 上传商品图 |
+| GET/POST | `/api/v1/tasks` | 任务列表 / 创建生成任务 |
+| GET | `/api/v1/tasks/{id}/status` | 任务状态 |
+| POST | `/api/v1/tasks/{id}/cancel` | 取消任务 |
+| WS | `/api/v1/tasks/{id}/ws` | 任务实时状态推送 |
+| GET | `/api/v1/assets`、`/assets/{id}` | 资产查询 / 详情 / 删除 |
+| POST | `/api/v1/listing/import-product` | 导入待刊登商品 |
+| GET/POST | `/api/v1/listing/tasks` | 刊登任务 |
+| POST | `/api/v1/listing/tasks/from-visual` | 由视觉任务直接建刊登任务 |
+| POST | `/api/v1/listing/tasks/{id}/compliance` | 执行合规检查 |
+| POST | `/api/v1/listing/tasks/{id}/push` | 推送平台 |
+| GET | `/api/v1/listing/tasks/{id}/push-results` | 推送结果 |
+| GET/POST | `/api/v1/listing/adapter-configs` | 平台适配器配置 |
+| GET/POST | `/api/v1/knowledge/documents` | 知识库文档 |
+| POST | `/api/v1/knowledge/documents/upload` | 上传文档 |
+| POST | `/api/v1/knowledge/search`、`/search/hybrid` | 向量 / 混合检索 |
+| POST | `/api/v1/knowledge/agent/query` | 知识库 Agent 问答 |
+| GET/POST | `/api/v1/knowledge/graphs` | 知识图谱 |
+| GET | `/api/v1/knowledge/stats` | 知识库统计 |
+| GET | `/api/v1/evaluation/*` | 命中率、对比、报告、优化建议 |
+| GET | `/api/v1/dashboard/stats` | 仪表盘聚合 |
+| GET | `/api/v1/ai/conversations`、`/usage/overview` | 会话追踪与用量 |
+| GET/POST/PUT/DELETE | `/api/v1/model-providers` | 模型厂商管理 |
+| POST | `/api/v1/model-providers/{id}/test` | 厂商连通性测试 |
 
-## 🗺️ 路线图
+示例：
 
-- [x] **v0.1.0** - LangGraph 7-Agent 视觉生成工作流 + RAG 知识库 + 合规检查 + Vue 3 管理后台
-- [x] **v0.2.0** - 多模型厂商对接 + AI 会话追踪 + Agent 可观测工作台（DAG + 提示词轨迹）
-- [ ] **v0.3.0** - 高级 RAG（HyDE / 多查询重写）+ GraphRAG 增强 + 生产级刊登 + 图片 RAG
-- [ ] **v0.4.0** - Agent 自适应重试与自愈 + 工作流可视化编辑器
-- [ ] **v1.0.0** - 多租户 SaaS 化 + 插件式 Agent 市场 + 全面生产就绪
+```bash
+# 创建商品
+curl -X POST http://localhost:8002/api/v1/products \
+  -H "Content-Type: application/json" \
+  -d '{"name":"智能运动手表","category":"digital","description":"健康监测与运动追踪","brand":"TechFit"}'
 
----
+# 创建生成任务
+curl -X POST http://localhost:8002/api/v1/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"product_id":"prod_001","task_type":"image_and_video",
+       "image_types":["main","scene","selling_point"],
+       "image_count_per_type":1,"video_duration":30.0}'
+```
 
-## 📄 许可证
+完整交互式文档见 <http://localhost:8002/docs>。
 
-本项目基于 [Apache License 2.0](LICENSE) 开源。
+## 刊登链路
 
----
+从视觉产物到平台上架是一条独立状态图，四个阶段：
 
-<div align="center">
+1. **ImportProduct**：把视觉商品的 `Product` 转换为刊登用的 `ListingProduct`（`source_images` 留空，由后续填充）；
+2. **AssetOptimizer ‖ Copywriter**：素材包与文案包**并行生成**，按平台规范裁剪尺寸、限制张数、控制标题字数；
+3. **ComplianceChecker**：按平台规则校验主图白底、尺寸、图片数量、标题长度、五点描述、搜索词字节数，命中禁词记 `WARNING`；
+4. **PlatformPush**：适配器推送，带限流与指数退避重试，结果落 `task_results`。
 
-**多智能体跨境电商助手** — 让 AI Agent 协作改变跨境电商内容生产方式
+平台适配器通过注册表管理，Amazon 的 US/UK/JP/DE 分站共用同一适配器与素材规范：
 
-</div>
+```python
+registry.register(Platform.AMAZON_US, AmazonAdapter)
+registry.register(Platform.EBAY, EbayAdapter)
+registry.register(Platform.SHOPIFY, ShopifyAdapter)
+```
+
+## RAG 知识增强
+
+四类知识库：`brand_guide`（品牌规范）、`category_knowledge`（类目知识）、`case_study`（成功案例）、`compliance_rule`（合规规则）。
+
+```
+用户查询 → Embedding（BGE-large-zh 本地 / 千问云端双通道）
+        → PGVector 相似度检索 → Top-K 分块
+        → 注入 Agent 提示词上下文
+```
+
+可选增强（默认关闭，按需在 `.env` 开启）：
+
+| 能力 | 开关 | 说明 |
+|---|---|---|
+| Query 改写 | `RAG_QUERY_REWRITING_ENABLED` | 多查询变体提升召回 |
+| HyDE | `RAG_HYDE_ENABLED` | 假设文档嵌入 |
+| 重排序 | `RAG_RERANKER_ENABLED` | BGE-reranker 交叉编码 |
+| 混合检索 | `RAG_HYBRID_RETRIEVAL_ENABLED` | Dense + Sparse + ColBERT，RRF 融合 |
+| Graph RAG | `GRAPH_RAG_ENABLED` | 实体/关系图谱 + 社区发现 |
+| 记忆系统 | `MEMORY_ENABLED` | 经验沉淀、自动分类、遗忘机制 |
+
+## Agent 可观测工作台
+
+前端 `任务详情 → 工作台` 把一次运行完整摊开：
+
+- **DAG 流程图**：每个 Agent 一个节点，实时显示等待 / 运行中 / 完成 / 失败；
+- **概览**：耗时、Token 消耗、费用、上下游 Agent；
+- **提示词**：完整的 System / Human Prompt，不截断，可复制；
+- **输入输出**：该 Agent 接收的参数与产出的结构化结果；
+- **子调用**：LLM / 工具调用明细。
+
+支撑数据来自 `AgentLog`（`src/graph/state.py`）与 `agent_logs` 累加字段，经 WebSocket 推送。
+
+## 安全与合规
+
+**认证与租户隔离**
+- API Token 走 SHA256 摘要存储，携带 Scope 权限；支持 `Authorization: Bearer` 与 `X-API-Key`；
+- 所有业务查询强制带 `tenant_id`，跨租户访问返回 404；
+- JWT 用于登录态，WebSocket 支持头鉴权（默认禁止 query 传 token）。
+
+**平台合规**
+- 广告法绝对化用语（“最佳”“第一”“100%”等）与平台敏感词检测；
+- 主图白底、尺寸下限、图片数量上限、标题字数、搜索词字节数校验；
+- 违规项分 `FAIL` / `WARNING` 两级，汇总到合规报告与适配器配置联动。
+
+**凭证与上传**
+- 适配器凭证以 Fernet 加密后存库（`CREDENTIALS_ENCRYPTION_KEY`）；
+- 上传大小上限 `MAX_UPLOAD_SIZE_MB`，文件类型与 SHA256 去重。
+
+## 降级矩阵
+
+| 依赖 | 缺失/不可用时的行为 |
+|---|---|
+| LLM API Key | 文案与创意走规则模板，流程仍可完整跑通 |
+| 图片厂商 | `ALLOW_MOCK_ASSETS=true` 时生成占位图并标记 `is_mock` |
+| 视频厂商 | 同上，返回占位视频与进度状态 |
+| PostgreSQL | 业务功能不可用（知识库、任务、资产均依赖），接口返回明确错误 |
+| Redis | 任务状态退化为内存存储，重启后丢失 |
+| 本地 Embedding 模型 | `RAG_ENABLED=false` 可跳过检索；未下载模型时 RAG 功能不可用 |
+| OSS | `STORAGE_TYPE=local` 落本地 `./output`，经 `/static` 暴露 |
+| 平台适配器 | 未注册的平台推送返回明确的 `push_failed` 与原因 |
+
+## 测试
+
+```bash
+# 全量测试（653 passed）
+uv run pytest
+
+# 指定目录
+uv run pytest tests/test_models tests/test_agents
+```
+
+覆盖：模型契约、Agent 行为、工作流路由、刊登与合规、多租户隔离、WebSocket 鉴权、
+RAG 检索与重排、知识图谱、存储后端、资产落库。
+
+## 设计要点
+
+**结构体传递而非自然语言**：Agent 之间传递 Pydantic 模型（`RequirementReport`、`CreativePlan`、
+`Storyboard`、`QualityReport`），字段缺失在类型层暴露，不依赖上游措辞。
+
+**状态累加语义**：`generated_images`、`agent_logs`、`quality_reports` 等列表字段用
+`Annotated[list, add]` 声明 reducer，否则节点返回的 dict 会覆盖整个列表、丢失历史。
+
+**降级即默认路径**：无 Key、无模型、无外部服务时都能跑，Mock 与规则回退不是补丁而是设计的一部分，
+保证演示、验收与测试可复现。
+
+**可观测先行**：每个 Agent 的执行都写 `AgentLog`（提示词、输入、输出、Token、费用），
+前端不做二次加工即可还原完整决策链路。
+
+**配置分层**：`Settings` 提供默认值 → `.env` 覆盖 → 数据库中的模型厂商配置优先，
+三者优先级明确，便于多环境部署。
+
+## 已知限制
+
+- 本地 Embedding 首次运行需下载 BGE 模型（约 1.3GB），未就绪时 RAG 不可用但不影响其他功能；
+- 视频生成依赖第三方异步接口，最长等待受厂商限制，超时按失败处理；
+- eBay 适配器为 HTTP 模拟实现，接入真实交易 API 需替换签名与端点；
+- 合规规则为规则表驱动，尚未接入 LLM 语义审核；
+- 本地存储适合单机，多实例部署应切换到 OSS 并保证 `/static` 由对象存储或 CDN 承载；
+- 前端为单体 Vue 工程，构建产物经 Nginx 托管。
+
+## 技术栈
+
+| 层级 | 技术 |
+|---|---|
+| 工作流引擎 | LangChain 1.x、LangGraph 1.x |
+| 后端框架 | FastAPI、Pydantic v2、SQLAlchemy 2.0（async） |
+| 数据库 | PostgreSQL 16 + PGVector |
+| 缓存/状态 | Redis 7 |
+| Embedding | BGE-large-zh（本地）、千问 text-embedding（云端） |
+| 前端 | Vue 3 + TypeScript + Element Plus + Pinia + AntV G6 |
+| 部署 | Docker Compose、Nginx |
+| 包管理 | uv |
+
+## License
+
+本项目采用 [Apache License 2.0](LICENSE)。
