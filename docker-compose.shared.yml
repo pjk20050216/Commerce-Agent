@@ -1,7 +1,7 @@
 # ============================================================
-# 多智能体跨境电商助手 — 共享模式（依赖 ait-share-docker）
-# 前提: 先启动共享基础设施
-#   docker compose -f D:\ait-code\ait-share-docker\docker-compose.yml up -d
+# 多智能体跨境电商助手 — 共享模式（复用已有的 PostgreSQL + Redis）
+# 前提: 先启动共享基础设施（以下路径按你本机实际情况填写）
+#   docker compose -f <你自己的共享基础设施目录>/docker-compose.yml up -d
 # 本项目启动:
 #   docker compose -f docker-compose.shared.yml up -d
 # ============================================================

@@ -6,8 +6,10 @@ import sys
 import random
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 
-sys.path.insert(0, "D:/ait-code/agent_part")
+# 将项目根目录加入 sys.path，保证以脚本方式运行时能导入 src 包
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.db.postgres import get_db_session
 from sqlalchemy import text

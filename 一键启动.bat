@@ -7,6 +7,18 @@ echo.
 
 cd /d "%~dp0"
 
+REM 0. 检查 .venv 虚拟环境
+if not exist ".venv\Scripts\python.exe" (
+    echo ======================================================================
+    echo  [错误] 未检测到 .venv 虚拟环境！
+    echo.
+    echo  请先双击运行根目录下的【一键初始化环境.bat】完成依赖安装。
+    echo ======================================================================
+    echo.
+    pause
+    exit /b 1
+)
+
 REM 1. 检查 8002 和 5173 端口是否已有服务在运行
 set PORT_8002_BUSY=0
 set PORT_5173_BUSY=0
@@ -30,23 +42,23 @@ goto :START_SERVICES
 echo ======================================================================
 echo  [提示] 检测到平台服务已经在运行中：
 if %PORT_8002_BUSY% equ 1 (
-    echo    - 后端服务 (端口 8002): [已在运行]
+    echo    - 后端服务 [端口 8002]: 已在运行
 ) else (
-    echo    - 后端服务 (端口 8002): [未启动]
+    echo    - 后端服务 [端口 8002]: 未启动
 )
 if %PORT_5173_BUSY% equ 1 (
-    echo    - 前端界面 (端口 5173): [已在运行]
+    echo    - 前端界面 [端口 5173]: 已在运行
 ) else (
-    echo    - 前端界面 (端口 5173): [未启动]
+    echo    - 前端界面 [端口 5173]: 未启动
 )
 echo ======================================================================
 echo.
 echo  请选择操作：
-echo    [1] 自动重启：先释放旧进程，然后全新启动（推荐）
-echo    [2] 直接在浏览器中打开页面 (http://localhost:5173)
+echo    [1] 自动重启：先释放旧进程，然后全新启动，推荐
+echo    [2] 直接在浏览器中打开页面 http://localhost:5173
 echo    [3] 取消退出
 echo.
-set /p USER_CHOICE="请输入选项 (1/2/3，默认回车为 1): "
+set /p USER_CHOICE="请输入选项 1/2/3，默认回车为 1: "
 
 if "%USER_CHOICE%"=="2" (
     echo 正在为您打开浏览器...
@@ -92,13 +104,13 @@ if not exist "frontend\node_modules" (
 REM 4. 启动前后端服务
 echo [3/3] 正在启动前后端服务...
 echo.
-echo       >> 正在启动后端服务 (FastAPI / 端口 8002)...
-start "CBCF 后端服务 - 端口 8002" cmd /k "cd /d %~dp0 && echo 正在启动后端... && conda run --no-capture-output -n cbcf python main.py"
+echo       →  正在启动后端服务 FastAPI / 端口 8002 ...
+start "MAA 后端服务 - 端口 8002" cmd /k "cd /d %~dp0 && echo 正在启动后端... && .venv\Scripts\python.exe main.py"
 
 timeout /t 2 /nobreak >nul
 
-echo       >> 正在启动前端服务 (Vue 3 / 端口 5173)...
-start "CBCF 前端服务 - 端口 5173" cmd /k "cd /d %~dp0frontend && echo 正在启动前端... && npm run dev"
+echo       →  正在启动前端服务 Vue 3 / 端口 5173 ...
+start "MAA 前端服务 - 端口 5173" cmd /k "cd /d %~dp0frontend && echo 正在启动前端... && npm run dev"
 
 timeout /t 3 /nobreak >nul
 echo.
@@ -109,13 +121,14 @@ echo  前端界面:  http://localhost:5173/
 echo  后端文档:  http://localhost:8002/docs
 echo  健康检查:  http://localhost:8002/api/v1/health
 echo.
-echo  提示: 
+echo  提示:
 echo  - 如需停止服务，请双击运行【一键停止.bat】。
 echo  - 即使未填 API Key，系统也会自动启用 Mock 降级体验。
+echo  - 数据库与 Redis 需另行启动，可执行 docker compose up -d postgres。
 echo ======================================================================
 echo.
 
 start http://localhost:5173/
 
-echo 按任意键可关闭此引导窗口（不会关闭已启动的前后端服务）...
+echo 按任意键可关闭此引导窗口，不会关闭已启动的前后端服务...
 pause >nul

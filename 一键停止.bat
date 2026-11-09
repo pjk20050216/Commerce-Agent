@@ -10,7 +10,10 @@ powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 8002, 5173 -Erro
 
 echo.
 echo ======================================================================
-echo  [OK] 后端 (8002) 和 前端 (5173) 端口已成功释放！
+echo  [OK] 后端 8002 与 前端 5173 端口已成功释放！
 echo ======================================================================
+echo.
+echo  说明: 数据库与 Redis 容器不会被关闭，数据会保留。
+echo  如需一并停止，请执行: docker compose stop postgres
 echo.
 pause

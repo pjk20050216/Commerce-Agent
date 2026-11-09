@@ -41,6 +41,10 @@ tasks = cur.fetchall()
 print(f"Found {len(tasks)} tasks")
 
 count = 0
+
+# 任务列表键需在循环外定义：无任务时循环不执行，后续校验仍要用到
+list_key = f"{PREFIX}:tenant:{TENANT}:task:list"
+
 for row in tasks:
     task_id, numeric_prod_id, status, created_at = row
 
@@ -80,7 +84,6 @@ for row in tasks:
     }
 
     task_key = f"{PREFIX}:tenant:{TENANT}:task:{task_id}"
-    list_key = f"{PREFIX}:tenant:{TENANT}:task:list"
 
     pipe = redis_client.pipeline()
     pipe.hset(task_key, mapping={"metadata": json.dumps(metadata, ensure_ascii=False)})

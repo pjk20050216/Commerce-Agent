@@ -1,6 +1,6 @@
 """创建 User/Tenant 表并插入开发测试用户。
 
-运行: C:/Users/JT/.conda/envs/cbcf/python.exe scripts/migrate_users.py
+运行: uv run python scripts/migrate_users.py
 """
 
 import asyncio

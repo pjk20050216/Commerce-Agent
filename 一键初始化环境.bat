@@ -4,29 +4,36 @@ echo ======================================================================
 echo           多智能体跨境电商助手 - 一键环境初始化向导
 echo ======================================================================
 echo.
-echo 本脚本将自动为您的电脑配置 Python (Conda) 与前端依赖。
+echo 本脚本将自动配置 uv 虚拟环境 (.venv) 与前端依赖。
 echo.
 
 cd /d "%~dp0"
 
-REM 1. 检查 Conda
-echo [1/4] 检查 Conda...
-where conda >nul 2>nul
+REM 1. 检查 uv
+echo [1/4] 检查 uv 包管理器...
+where uv >nul 2>nul
 if %errorlevel% neq 0 (
-    echo [错误] 未检测到 conda 命令！请先安装 Miniconda 或 Anaconda。
-    echo 下载地址: https://docs.conda.io/en/latest/miniconda.html
+    echo [错误] 未检测到 uv 命令！请先安装 uv。
+    echo 安装方式一: 打开 https://docs.astral.sh/uv/ 按官方指引安装
+    echo 安装方式二: 已在 Python 环境时执行 pip install uv
     echo.
     pause
     exit /b 1
 )
-echo       [OK] Conda 已安装。
+echo       [OK] uv 已安装。
 
-REM 2. 创建或更新 conda cbcf 环境
+REM 2. 同步 Python 依赖到 .venv
 echo.
-echo [2/4] 配置 Python 虚拟环境 (cbcf, Python 3.13)...
-call conda create -n cbcf python=3.13 -y
-echo       [OK] 虚拟环境创建完成，开始安装 Python 依赖...
-call conda run -n cbcf pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+echo [2/4] 同步 Python 依赖到 .venv，含 RAG 扩展，首次约 1GB，请耐心等待...
+set UV_HTTP_TIMEOUT=600
+uv sync --extra rag
+if %errorlevel% neq 0 (
+    echo.
+    echo [错误] Python 依赖安装失败，请检查网络后重试。
+    echo 若只是网络超时，可多次执行本脚本，uv 会断点续传。
+    pause
+    exit /b 1
+)
 echo       [OK] Python 依赖安装完成。
 
 REM 3. 安装前端依赖
@@ -49,6 +56,7 @@ echo [4/4] 准备环境变量配置文件 .env...
 if not exist ".env" (
     copy ".env.example" ".env" >nul
     echo       [OK] 已从 .env.example 生成 .env。
+    echo       提示: .env 中的数据库端口需与 docker-compose 的映射一致。
 ) else (
     echo       [OK] .env 配置文件已存在。
 )
