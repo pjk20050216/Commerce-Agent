@@ -217,9 +217,9 @@ documents/
 docs/superpowers/
 docs/system_design.md
 docs/*.mermaid
-knowledge/
+# 根目录下的知识库文档/语料目录，不能写成 knowledge/，否则会误伤源码包 src/knowledge/
+/knowledge/
 openspec/
-knowledge/
 migrations/
 .flow/
 .claude/
@@ -228,7 +228,9 @@ migrations/
 .codex/
 .trae/
 frontend/package-lock.json
-models/
+# 仅忽略根目录下下载的 Embedding 模型目录（BAAI/bge-large-zh），
+# 不能写成 models/，否则会误伤源码包 src/models/
+/models/
 .DS_Store
 
 # Temporary & Archive files
@@ -240,7 +242,8 @@ models/
 正在启动*
 
 # Local storage & runtime outputs
-storage/
+# 仅忽略根目录的运行时存储目录，不能写成 storage/，否则会误伤源码包 src/storage/
+/storage/
 static/
 output/
 .output/

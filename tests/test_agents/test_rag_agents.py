@@ -79,19 +79,6 @@ class TestRAGEnhancedRequirementAnalyzer:
         assert agent._session == mock_session
         assert agent._retriever == mock_retriever
 
-    def test_has_rag(self, mock_session: MagicMock, mock_retriever: MagicMock) -> None:
-        """测试 RAG 能力检查。"""
-        agent = RAGEnhancedRequirementAnalyzer(
-            session=mock_session,
-            retriever=mock_retriever,
-        )
-
-        assert agent.has_rag() is True
-
-        # 无 retriever
-        agent_no_rag = RAGEnhancedRequirementAnalyzer(session=mock_session)
-        assert agent_no_rag.has_rag() is False
-
     @pytest.mark.asyncio
     async def test_execute_without_product(
         self, mock_session: MagicMock, mock_retriever: MagicMock

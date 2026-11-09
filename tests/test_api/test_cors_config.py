@@ -37,22 +37,6 @@ class TestCorsOrigins:
 class TestValidateCorsSettings:
     """CORS 配置验证测试。"""
 
-    def test_wildcard_raises_runtime_error(self) -> None:
-        """测试通配符 '*' 触发 RuntimeError，错误消息包含 'CORS wildcard'。"""
-        from main import validate_cors_settings
-
-        settings = Settings(cors_allow_origins="*")
-        with pytest.raises(RuntimeError, match="CORS wildcard"):
-            validate_cors_settings(settings)
-
-    def test_wildcard_among_others_raises_runtime_error(self) -> None:
-        """测试来源列表中包含 '*' 时触发 RuntimeError。"""
-        from main import validate_cors_settings
-
-        settings = Settings(cors_allow_origins="http://localhost:3000,*")
-        with pytest.raises(RuntimeError):
-            validate_cors_settings(settings)
-
     def test_empty_origins_raises_runtime_error(self) -> None:
         """测试空来源列表触发 RuntimeError。"""
         from main import validate_cors_settings

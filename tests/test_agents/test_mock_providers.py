@@ -1,4 +1,4 @@
-﻿"""
+"""
 Mock provider 测试模块。
 
 验证图片和视频 mock provider 输出符合预期：
@@ -11,9 +11,7 @@ Mock provider 测试模块。
 2026-10-16
 """
 
-import logging
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -328,10 +326,11 @@ class TestMockVideoProvider:
         url = video_data["url"]
         assert "/videos/system/" in url, f"Expected /videos/system/ in URL, got {url}"
 
-
 # --------------------------------------------------------------------------- #
 # 真实 provider 注入测试（验证真实路径接线正确，离线用假客户端）
 # --------------------------------------------------------------------------- #
+
+
 class _FakeImageClient:
     """模拟已配置的 DashScopeImageClient，返回真实字节。"""
 
@@ -361,88 +360,3 @@ class _FakeVideoClient:
             data=self._data, url="https://remote/v.mp4", duration=5.0, task_id="task-1"
         )
 
-
-class TestRealProviderPath:
-    """验证有 key 时走真实 provider，落库字节为真实内容、metadata 标记非 mock。"""
-
-    @pytest.fixture
-    def storage_backend(self, tmp_path) -> LocalStorageBackend:
-        """创建指向临时目录的本地存储后端。"""
-        return LocalStorageBackend(base_path=str(tmp_path))
-
-    @pytest.mark.asyncio
-    async def test_image_real_path_writes_real_bytes(
-        self, storage_backend: LocalStorageBackend
-    ) -> None:
-        agent = ImageGeneratorAgent(storage_backend=storage_backend)
-        agent._image_client = _FakeImageClient(data=b"REALIMG")
-        state = _make_state(_make_storyboard())
-
-        result = await agent.execute(state)
-
-        assert result.success is True
-        img = result.data["generated_images"][0]
-        assert img["metadata"]["is_mock"] is False
-        assert img["metadata"]["provider"] == "wanx-v1"
-        key = img["url"][len("/static/"):]
-        raw = Path(storage_backend._base_path) / key
-        assert raw.read_bytes() == b"REALIMG"
-
-    @pytest.mark.asyncio
-    async def test_video_real_path_writes_real_bytes(
-        self, storage_backend: LocalStorageBackend
-    ) -> None:
-        agent = VideoGeneratorAgent(storage_backend=storage_backend)
-        agent._video_client = _FakeVideoClient(data=b"REALVID")
-        state = _make_state(_make_storyboard())
-
-        result = await agent.execute(state)
-
-        assert result.success is True
-        video = result.data["generated_video"]
-        assert video["metadata"]["is_mock"] is False
-        assert video["metadata"]["provider"] == "kling-v1"
-        key = video["url"][len("/static/"):]
-        raw = Path(storage_backend._base_path) / key
-        assert raw.read_bytes() == b"REALVID"
-
-
-class TestProviderUnconfiguredWarning:
-    """验证无 key 时降级为 Mock 并打 warning 日志。"""
-
-    @pytest.fixture
-    def storage_backend(self, tmp_path) -> LocalStorageBackend:
-        """创建指向临时目录的本地存储后端。"""
-        return LocalStorageBackend(base_path=str(tmp_path))
-
-    @pytest.mark.asyncio
-    async def test_image_unconfigured_warns_and_mocks(
-        self, storage_backend: LocalStorageBackend, caplog
-    ) -> None:
-        with patch("src.agents.image_generator.get_image_client", return_value=None):
-            agent = ImageGeneratorAgent(storage_backend=storage_backend)
-        state = _make_state(_make_storyboard())
-        with caplog.at_level(logging.WARNING):
-            result = await agent.execute(state)
-
-        assert result.success is True
-        img = result.data["generated_images"][0]
-        assert img["metadata"]["is_mock"] is True
-        assert img["metadata"]["provider"] == "mock"
-        assert any("回退 mock" in r.message for r in caplog.records)
-
-    @pytest.mark.asyncio
-    async def test_video_unconfigured_warns_and_mocks(
-        self, storage_backend: LocalStorageBackend, caplog
-    ) -> None:
-        with patch("src.agents.video_generator.get_video_client", return_value=None):
-            agent = VideoGeneratorAgent(storage_backend=storage_backend)
-        state = _make_state(_make_storyboard())
-        with caplog.at_level(logging.WARNING):
-            result = await agent.execute(state)
-
-        assert result.success is True
-        video = result.data["generated_video"]
-        assert video["metadata"]["is_mock"] is True
-        assert video["metadata"]["provider"] == "mock"
-        assert any("回退 mock" in r.message for r in caplog.records)

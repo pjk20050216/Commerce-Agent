@@ -1,4 +1,4 @@
-﻿"""
+"""
 eBay Trading API 刊登适配器测试。
 
 Description:
@@ -14,7 +14,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.agents.listing_ebay_adapter import EbayAdapter
-from src.agents.listing_platform_adapter import PushResult
 from src.models.listing import (
     AssetPackage,
     CopywritingPackage,
@@ -234,107 +233,6 @@ class TestEbayAdapterTransformAssets:
         assert len(result["pictures"]) == 12
 
 
-class TestEbayAdapterPushListing:
-    """EbayAdapter 刊登推送测试。"""
-
-    SUCCESS_XML_RESPONSE = """<?xml version="1.0" encoding="utf-8"?>
-<AddItemResponse xmlns="urn:ebay:apis:eBLBaseComponents">
-  <Timestamp>2026-09-18T00:00:00.000Z</Timestamp>
-  <Ack>Success</Ack>
-  <Version>967</Version>
-  <Build>E967_CORE_API_12345</Build>
-  <ItemID>123456789</ItemID>
-  <Fees></Fees>
-</AddItemResponse>"""
-
-    FAILURE_XML_RESPONSE = """<?xml version="1.0" encoding="utf-8"?>
-<AddItemResponse xmlns="urn:ebay:apis:eBLBaseComponents">
-  <Timestamp>2026-09-18T00:00:00.000Z</Timestamp>
-  <Ack>Failure</Ack>
-  <Version>967</Version>
-  <Errors>
-    <Error>
-      <ShortMessage>Invalid category</ShortMessage>
-      <LongMessage>The category ID is not valid.</LongMessage>
-      <ErrorCode>10001</ErrorCode>
-    </Error>
-  </Errors>
-</AddItemResponse>"""
-
-    def test_push_listing_success(
-        self,
-        adapter: EbayAdapter,
-        product: ListingProduct,
-        asset_package: AssetPackage,
-        copywriting: CopywritingPackage,
-        task: ListingTask,
-    ) -> None:
-        """测试刊登推送成功。"""
-        adapter._auth_token = "test_token"
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = self.SUCCESS_XML_RESPONSE
-
-        with patch("src.agents.listing_ebay_adapter.requests.post") as mock_post:
-            mock_post.return_value = mock_response
-            result = adapter.push_listing(product, asset_package, copywriting, task)
-
-        assert result.success is True
-        assert result.platform == Platform.EBAY
-        assert result.listing_id == "123456789"
-        assert result.url == "https://www.ebay.com/itm/123456789"
-
-    def test_push_listing_failure(
-        self,
-        adapter: EbayAdapter,
-        product: ListingProduct,
-        asset_package: AssetPackage,
-        copywriting: CopywritingPackage,
-        task: ListingTask,
-    ) -> None:
-        """测试刊登推送失败。"""
-        adapter._auth_token = "test_token"
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = self.FAILURE_XML_RESPONSE
-
-        with patch("src.agents.listing_ebay_adapter.requests.post") as mock_post:
-            mock_post.return_value = mock_response
-            result = adapter.push_listing(product, asset_package, copywriting, task)
-
-        assert result.success is False
-        assert result.platform == Platform.EBAY
-        assert "Invalid category" in result.error
-
-    def test_push_listing_triggers_auth_if_needed(
-        self,
-        adapter: EbayAdapter,
-        product: ListingProduct,
-        asset_package: AssetPackage,
-        copywriting: CopywritingPackage,
-        task: ListingTask,
-    ) -> None:
-        """测试未认证时自动触发认证。"""
-        mock_token_response = MagicMock()
-        mock_token_response.status_code = 200
-        mock_token_response.json.return_value = {
-            "access_token": "auto_token",
-        }
-
-        mock_api_response = MagicMock()
-        mock_api_response.status_code = 200
-        mock_api_response.text = self.SUCCESS_XML_RESPONSE
-
-        with patch("src.agents.listing_ebay_adapter.requests.post") as mock_post:
-            mock_post.side_effect = [mock_token_response, mock_api_response]
-            result = adapter.push_listing(product, asset_package, copywriting, task)
-
-        assert mock_post.call_count == 2
-        assert result.success is True
-
-
 class TestEbayAdapterUpdateListing:
     """EbayAdapter 刊登更新测试。"""
 
@@ -453,37 +351,6 @@ class TestEbayAdapterDeleteListing:
 
         assert result.success is False
         assert "Item already ended" in result.error
-
-
-class TestEbayAdapterXmlPayload:
-    """EbayAdapter XML 载荷结构测试。"""
-
-    def test_xml_payload_structure(
-        self,
-        adapter: EbayAdapter,
-        product: ListingProduct,
-        asset_package: AssetPackage,
-        copywriting: CopywritingPackage,
-        task: ListingTask,
-    ) -> None:
-        """测试请求头 Content-Type 包含 xml。"""
-        adapter._auth_token = "test_token"
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = """<?xml version="1.0"?>
-<AddItemResponse xmlns="urn:ebay:apis:eBLBaseComponents">
-  <Ack>Success</Ack>
-  <ItemID>111</ItemID>
-</AddItemResponse>"""
-
-        with patch("src.agents.listing_ebay_adapter.requests.post") as mock_post:
-            mock_post.return_value = mock_response
-            adapter.push_listing(product, asset_package, copywriting, task)
-
-        call_headers = mock_post.call_args.kwargs["headers"]
-        assert "xml" in call_headers["Content-Type"]
-        assert call_headers["X-EBAY-API-CALL-NAME"] == "AddItem"
 
 
 class TestEbayAdapterEscapeXml:

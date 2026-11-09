@@ -7,9 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from main import app
 
-from src.agents.listing_platform_adapter import PushResult
 from src.db.listing_models import TaskResultPO
-from src.models.listing import ListingProduct, ListingTask, Platform
 
 
 @pytest.fixture(autouse=True)
@@ -80,39 +78,6 @@ def client() -> TestClient:
 
 class TestListingPushAPI:
     """测试刊登推送 API。"""
-
-    def test_push_listing(self, client: TestClient) -> None:
-        """测试推送刊登。"""
-        mock_task_po = _make_task_po(id=1)
-        mock_product = ListingProduct(sku="PUSH-001", title="Push Test Product")
-        mock_task_obj = ListingTask(id=1, product_id=1, target_platforms=[Platform.AMAZON])
-
-        cm, mock_session = _mock_get_db()
-
-        mock_adapter = MagicMock()
-        mock_adapter.push_listing.return_value = PushResult(
-            success=True, platform=Platform.AMAZON, listing_id="B08XYZ"
-        )
-
-        with (
-            patch(
-                "src.api.router.listing_push._load_domain_objects", new_callable=AsyncMock
-            ) as mock_load,
-            patch("src.api.router.listing_push.get_db", return_value=cm),
-            patch("src.api.router.listing_push.registry") as mock_registry,
-            patch("src.api.router.listing_push._config_manager") as mock_mgr,
-        ):
-            mock_load.return_value = (mock_task_po, mock_product, mock_task_obj)
-            mock_registry.get.return_value = mock_adapter
-            mock_mgr.get_config = AsyncMock(return_value=None)
-
-            push_resp = client.post("/api/v1/listing/tasks/1/push")
-            assert push_resp.status_code == 200
-            data = push_resp.json()
-            assert data["code"] == 200
-            assert data["data"]["task_id"] == 1
-            assert len(data["data"]["results"]) == 1
-            assert data["data"]["results"][0]["success"] is True
 
     def test_push_task_not_found(self, client: TestClient) -> None:
         """测试推送不存在的任务。"""

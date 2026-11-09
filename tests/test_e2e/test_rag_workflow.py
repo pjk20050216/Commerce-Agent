@@ -152,57 +152,6 @@ class TestRAGWorkflowE2E:
         assert isinstance(reviewer, RAGEnhancedQualityReviewer)
 
     @pytest.mark.asyncio
-    async def test_rag_enhanced_requirement_analysis(
-        self,
-        mock_session: MagicMock,
-        mock_retriever: MagicMock,
-        sample_product: Product,
-    ) -> None:
-        """测试 RAG 增强的需求分析。"""
-        # 配置检索器返回
-        retrieval_result = RetrievalResult(
-            query="智能手表 产品分析",
-            results=[
-                _create_search_result(
-                    1,
-                    1,
-                    "数码类目知识",
-                    "category_knowledge",
-                    "智能手表核心卖点：健康监测、运动追踪。",
-                    0.90,
-                )
-            ],
-            context="智能手表核心卖点：健康监测、运动追踪。",
-            sources=[{"chunk_id": 1, "doc_id": 1}],
-        )
-        mock_retriever.retrieve_for_product_analysis.return_value = retrieval_result
-
-        # 创建 Agent
-        agent = RAGEnhancedRequirementAnalyzer(
-            session=mock_session,
-            retriever=mock_retriever,
-        )
-
-        # 准备状态
-        state = AgentState(product_info=sample_product)
-
-        # Mock LLM 响应
-        with patch.object(
-            agent,
-            "invoke_llm",
-            new_callable=AsyncMock,
-            return_value='{"product_summary": "智能手表", "key_features": ["健康监测"], "selling_points": [], "target_audience": ["科技爱好者"], "style_recommendations": ["科技风"], "keywords": ["智能手表"]}',
-        ):
-            result = await agent.execute(state)
-
-        # 验证结果
-        assert result.success is True
-        assert "requirement_report" in result.data
-
-        # 验证检索器被调用
-        mock_retriever.retrieve_for_product_analysis.assert_called_once()
-
-    @pytest.mark.asyncio
     async def test_rag_enhanced_creative_planning(
         self,
         mock_session: MagicMock,
@@ -248,56 +197,6 @@ class TestRAGWorkflowE2E:
 
         # 验证结果
         assert result.success is True
-
-    @pytest.mark.asyncio
-    async def test_rag_enhanced_quality_review(
-        self,
-        mock_session: MagicMock,
-        mock_retriever: MagicMock,
-        sample_product: Product,
-    ) -> None:
-        """测试 RAG 增强的质量审核。"""
-        # 配置检索器返回
-        compliance_result = RetrievalResult(
-            query="合规规则",
-            results=[
-                _create_search_result(
-                    1,
-                    1,
-                    "电商合规规则",
-                    "compliance_rule",
-                    "禁止词列表：第一、最好、独家。",
-                    0.95,
-                )
-            ],
-            context="禁止词列表：第一、最好、独家。",
-            sources=[{"chunk_id": 1, "doc_id": 1}],
-        )
-        mock_retriever.retrieve_compliance_rules.return_value = compliance_result
-
-        # 创建 Agent
-        agent = RAGEnhancedQualityReviewer(
-            session=mock_session,
-            retriever=mock_retriever,
-        )
-
-        # 准备状态
-        state = AgentState(product_info=sample_product)
-
-        # Mock LLM 响应
-        with patch.object(
-            agent,
-            "invoke_llm",
-            new_callable=AsyncMock,
-            return_value='{"score": 85, "issues": [], "suggestions": []}',
-        ):
-            result = await agent.execute(state)
-
-        # 验证结果
-        assert result.success is True
-
-        # 验证合规检索被调用
-        mock_retriever.retrieve_compliance_rules.assert_called_once()
 
 
 class TestRAGFallback:

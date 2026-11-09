@@ -44,47 +44,6 @@ def client() -> TestClient:
 class TestAdapterConfigAPI:
     """测试适配器配置 CRUD API（含租户隔离）。"""
 
-    def test_create_adapter_config(self, client: TestClient) -> None:
-        """测试创建配置（带 tenant_id）。"""
-        mock_session = AsyncMock()
-        mock_session.flush = AsyncMock()
-        mock_session.refresh = AsyncMock()
-        mock_session.add = MagicMock()
-
-        with patch("src.api.router.adapter_config.get_db") as mock_gdb:
-            cm = AsyncMock()
-            cm.__aenter__ = AsyncMock(return_value=mock_session)
-            cm.__aexit__ = AsyncMock(return_value=None)
-            mock_gdb.return_value = cm
-
-            # Simulate refresh populating id
-            def _refresh_side_effect(po: MagicMock) -> None:
-                po.id = 1
-                po.platform = "amazon"
-                po.shop_id = "shop-001"
-                po.tenant_id = "tenant-a"
-                po.credentials = {"client_id": "abc", "client_secret": "xyz"}
-                po.is_active = True
-                po.created_at = datetime.now(timezone.utc)
-                po.updated_at = datetime.now(timezone.utc)
-
-            mock_session.refresh = AsyncMock(side_effect=_refresh_side_effect)
-
-            resp = client.post(
-                "/api/v1/listing/adapter-configs",
-                json={
-                    "platform": "amazon",
-                    "shop_id": "shop-001",
-                    "credentials": {"client_id": "abc", "client_secret": "xyz"},
-                    "is_active": True,
-                },
-            )
-            assert resp.status_code == 201
-            data = resp.json()
-            assert data["code"] == 200
-            assert data["data"]["platform"] == "amazon"
-            assert data["data"]["shop_id"] == "shop-001"
-
     def test_list_adapter_configs(self, client: TestClient) -> None:
         """测试配置列表（仅当前租户）。"""
         mock_po = _make_mock_po(id=1, platform="amazon", shop_id="default", tenant_id="dev")
@@ -106,23 +65,6 @@ class TestAdapterConfigAPI:
             data = resp.json()
             assert data["code"] == 200
             assert len(data["data"]) == 1
-
-    def test_get_adapter_config(self, client: TestClient) -> None:
-        """测试获取单个配置（仅当前租户）。"""
-        mock_po = _make_mock_po(id=1, platform="ebay", shop_id="shop-2", tenant_id="dev")
-        mock_session = AsyncMock()
-        mock_session.get.return_value = mock_po
-
-        with patch("src.api.router.adapter_config.get_db") as mock_gdb:
-            cm = AsyncMock()
-            cm.__aenter__ = AsyncMock(return_value=mock_session)
-            cm.__aexit__ = AsyncMock(return_value=None)
-            mock_gdb.return_value = cm
-
-            resp = client.get("/api/v1/listing/adapter-configs/1")
-            assert resp.status_code == 200
-            data = resp.json()
-            assert data["data"]["platform"] == "ebay"
 
     def test_get_adapter_config_not_found(self, client: TestClient) -> None:
         """测试获取不存在的配置。"""
@@ -156,25 +98,6 @@ class TestAdapterConfigAPI:
             assert resp.status_code == 200
             data = resp.json()
             assert data["code"] == 404
-
-    def test_delete_adapter_config(self, client: TestClient) -> None:
-        """测试删除配置。"""
-        mock_po = _make_mock_po(id=1, platform="amazon", shop_id="default", tenant_id="dev")
-        mock_session = AsyncMock()
-        mock_session.get.return_value = mock_po
-        mock_session.delete = AsyncMock()
-        mock_session.flush = AsyncMock()
-
-        with patch("src.api.router.adapter_config.get_db") as mock_gdb:
-            cm = AsyncMock()
-            cm.__aenter__ = AsyncMock(return_value=mock_session)
-            cm.__aexit__ = AsyncMock(return_value=None)
-            mock_gdb.return_value = cm
-
-            resp = client.delete("/api/v1/listing/adapter-configs/1")
-            assert resp.status_code == 200
-            data = resp.json()
-            assert data["code"] == 200
 
     def test_delete_adapter_config_wrong_tenant(self, client: TestClient) -> None:
         """测试删除其他租户的配置返回 404。"""

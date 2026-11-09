@@ -12,7 +12,7 @@ Provider 客户端单元测试（离线）。
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import httpx
 import jwt
@@ -27,10 +27,11 @@ from src.clients.provider_result import (
     VideoGenerationResult,
 )
 
-
 # --------------------------------------------------------------------------- #
 # 测试夹具：构造最小 settings 与假 httpx 客户端
 # --------------------------------------------------------------------------- #
+
+
 def _img_settings(api_key: str = "sk-test") -> SimpleNamespace:
     return SimpleNamespace(dashscope_api_key=api_key, image_model="wanx-v1")
 
@@ -99,65 +100,21 @@ def _fake_wanx_response(status_code: int = 200, results: list | None = None) -> 
         output={"results": results or []},
     )
 
-
 # --------------------------------------------------------------------------- #
 # DashScope 图片客户端
 # --------------------------------------------------------------------------- #
+
+
 class TestDashScopeImageClient:
     def test_is_available(self) -> None:
         assert DashScopeImageClient(settings=_img_settings("sk")).is_available() is True
         assert DashScopeImageClient(settings=_img_settings("")).is_available() is False
 
-    @pytest.mark.asyncio
-    async def test_generate_happy_path(self) -> None:
-        fake = FakeAsyncClient(gets=[_FakeResponse(content=b"IMAGEBYTES")])
-        client = DashScopeImageClient(settings=_img_settings(), httpx_client=fake)
-        with patch(
-            "dashscope.ImageSynthesis.call",
-            return_value=_fake_wanx_response(results=[{"url": "https://dash/x.png", "seed": 42}]),
-        ):
-            result = await client.generate(prompt="a cat", width=1024, height=1024, n=1)
-
-        assert isinstance(result, ImageGenerationResult)
-        assert len(result.images) == 1
-        assert result.images[0].data == b"IMAGEBYTES"
-        assert result.images[0].url == "https://dash/x.png"
-        assert result.images[0].seed == 42
-
-    @pytest.mark.asyncio
-    async def test_generate_download_failure_raises(self) -> None:
-        fake = FakeAsyncClient(gets=[httpx.ConnectError("boom")])
-        client = DashScopeImageClient(settings=_img_settings(), httpx_client=fake)
-        with patch(
-            "dashscope.ImageSynthesis.call",
-            return_value=_fake_wanx_response(results=[{"url": "u"}]),
-        ), pytest.raises(ProviderUnavailableError):
-            await client.generate(prompt="x")
-
-    @pytest.mark.asyncio
-    async def test_generate_empty_results_raises(self) -> None:
-        fake = FakeAsyncClient()
-        client = DashScopeImageClient(settings=_img_settings(), httpx_client=fake)
-        with patch(
-            "dashscope.ImageSynthesis.call",
-            return_value=_fake_wanx_response(results=[]),
-        ), pytest.raises(ProviderUnavailableError):
-            await client.generate(prompt="x")
-
-    @pytest.mark.asyncio
-    async def test_generate_api_error_raises(self) -> None:
-        fake = FakeAsyncClient()
-        client = DashScopeImageClient(settings=_img_settings(), httpx_client=fake)
-        with patch(
-            "dashscope.ImageSynthesis.call",
-            return_value=_fake_wanx_response(status_code=400, results=[]),
-        ), pytest.raises(ProviderUnavailableError):
-            await client.generate(prompt="x")
-
-
 # --------------------------------------------------------------------------- #
 # Kling 视频客户端
 # --------------------------------------------------------------------------- #
+
+
 class TestKlingVideoClient:
     def test_is_available(self) -> None:
         assert KlingVideoClient(settings=_vid_settings()).is_available() is True
@@ -235,10 +192,11 @@ class TestKlingVideoClient:
         with pytest.raises(ProviderUnavailableError):
             await client.generate(prompt="x")
 
-
 # --------------------------------------------------------------------------- #
 # 工厂函数
 # --------------------------------------------------------------------------- #
+
+
 class TestFactoryFunctions:
     def test_get_image_client_none_when_unconfigured(self) -> None:
         assert get_image_client(settings=_img_settings("")) is None

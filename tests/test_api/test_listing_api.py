@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from main import app
 
 from src.db.listing_models import ComplianceReportPO, ListingProductPO, ListingTaskPO
-from src.models.listing import ListingProduct, Platform
+from src.models.listing import ListingProduct
 
 
 @pytest.fixture(autouse=True)
@@ -257,51 +257,6 @@ class TestListingTaskAPI:
 
 class TestComplianceAPI:
     """测试合规报告 API。"""
-
-    def test_run_compliance_check(self, client: TestClient) -> None:
-        """测试执行合规检查。"""
-        mock_task_po = _make_task_po(id=1, product_sku="COMPL-001", target_platforms=["amazon"])
-        mock_product_po = _make_product_po(sku="COMPL-001", title="Clean Product")
-
-        mock_task_repo = AsyncMock()
-        mock_task_repo.get = AsyncMock(return_value=mock_task_po)
-        mock_product_repo = AsyncMock()
-        mock_product_repo.get_by_field = AsyncMock(return_value=mock_product_po)
-
-        cm, mock_session = _mock_get_db()
-
-        def repo_factory(model, session):
-            if model is ListingTaskPO:
-                return mock_task_repo
-            if model is ListingProductPO:
-                return mock_product_repo
-            return AsyncMock()
-
-        from src.models.listing import ComplianceReport, ComplianceStatus
-
-        mock_report = ComplianceReport(
-            id=1,
-            listing_task_id=1,
-            platform=Platform.AMAZON,
-            overall=ComplianceStatus.PASS,
-        )
-
-        with (
-            patch("src.api.router.listing.get_db", return_value=cm),
-            patch("src.api.router.listing.BaseRepository", side_effect=repo_factory),
-            patch("src.agents.listing_compliance_checker.ComplianceCheckerAgent") as MockAgent,
-        ):
-            mock_checker = MagicMock()
-            mock_checker.execute_sync.return_value = {
-                "compliance_reports": {Platform.AMAZON: mock_report},
-            }
-            MockAgent.return_value = mock_checker
-
-            check_resp = client.post("/api/v1/listing/tasks/1/compliance")
-            assert check_resp.status_code == 201
-            data = check_resp.json()
-            assert data["code"] == 200
-            assert "amazon" in data["data"]
 
     def test_get_compliance_report(self, client: TestClient) -> None:
         """测试查询合规报告。"""

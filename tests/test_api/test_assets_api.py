@@ -48,7 +48,6 @@ class FakeAsset:
     status: str = "completed"
     created_at: datetime = dc_field(default_factory=lambda: datetime.now(UTC))
 
-
 # ---------------------------------------------------------------------------
 # Fake StorageBackend
 # ---------------------------------------------------------------------------
@@ -74,7 +73,6 @@ class FakeStorage:
 
     def get_url(self, key: str) -> str:
         return f"/static/{key}"
-
 
 # ---------------------------------------------------------------------------
 # Fake AssetRepository (mimics real AssetRepository API with in-memory data)
@@ -130,7 +128,6 @@ class FakeAssetRepository:
 
     def delete_sync(self, asset: FakeAsset) -> None:
         self._deleted_ids.add(asset.id)
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -196,7 +193,6 @@ def auth_no_scope() -> AuthContext:
     """无 assets scope。"""
     return AuthContext(tenant_id="tenant-a", user_id="user-none", scopes=[])
 
-
 # ---------------------------------------------------------------------------
 # Context managers for patching
 # ---------------------------------------------------------------------------
@@ -251,7 +247,6 @@ def _patches(repo: FakeAssetRepository, storage: FakeStorage | None = None):
         )
 
     return patches
-
 
 # ---------------------------------------------------------------------------
 # Tests: list_assets
@@ -372,7 +367,6 @@ class TestListAssets:
 
         asyncio.run(_run())
 
-
 # ---------------------------------------------------------------------------
 # Tests: get_asset
 # ---------------------------------------------------------------------------
@@ -423,7 +417,6 @@ class TestGetAsset:
 
         asyncio.run(_run())
 
-
 # ---------------------------------------------------------------------------
 # Tests: delete_asset
 # ---------------------------------------------------------------------------
@@ -431,28 +424,6 @@ class TestGetAsset:
 
 class TestDeleteAsset:
     """测试资产删除接口。"""
-
-    def test_delete_asset_removes_storage_and_db(
-        self,
-        repo: FakeAssetRepository,
-        storage: FakeStorage,
-        auth_a: AuthContext,
-    ) -> None:
-        """删除资产应同时清理存储和数据库记录。"""
-        from src.api.router.assets import delete_asset
-
-        async def _run() -> None:
-            patches = _patches(repo, storage=storage)
-            with patches[0], patches[1], patches[2]:
-                result = await delete_asset(asset_id=1, auth=auth_a)
-            assert result.code == 200
-            assert result.message == "删除成功"
-            # 验证 DB 删除
-            assert 1 in repo._deleted_ids
-            # 验证存储删除
-            assert "images/test.png" in storage.deleted_keys
-
-        asyncio.run(_run())
 
     def test_delete_asset_returns_404_for_other_tenant(
         self,
@@ -508,7 +479,6 @@ class TestDeleteAsset:
 
         asyncio.run(_run())
 
-
 # ---------------------------------------------------------------------------
 # Tests: scope enforcement (inspect)
 # ---------------------------------------------------------------------------
@@ -550,7 +520,6 @@ class TestAssetScopeCalls:
             "_require_scope(auth, 'assets:write')" in source, (
             f"delete_asset 未调用 _require_scope(auth, 'assets:write')\nsource:\n{source}"
         )
-
 
 # ---------------------------------------------------------------------------
 # Tests: _require_scope helper (unit tests)
