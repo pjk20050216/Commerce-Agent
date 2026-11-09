@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🤖 多智能体跨境电商助手 (multi-agent-cross-border-assistant)
+# 🤖 多智能体跨境电商助手
 
 ### 从商品分析到多平台刊登，多个 AI Agent 协作完成视觉内容生产——**你能实时看到每个 Agent 的思考与协作过程**
 
@@ -16,7 +16,7 @@
 
 </div>
 
-> 💡 **一句话介绍**：**多智能体跨境电商助手 (MAA Platform)** 用一张 LangGraph 状态图编排 7+ 个专业 Agent，自动完成跨境电商的商品分析、AI 文案、图片/视频生成、合规检查、多平台刊登全流程；并通过一个 DevTools 风格的可观测工作台，让你实时看到每个 Agent 的提示词、传递参数与协作轨迹。
+> 💡 **一句话介绍**：**多智能体跨境电商助手** 用一张 LangGraph 状态图编排 7+ 个专业 Agent，自动完成跨境电商的商品分析、AI 文案、图片/视频生成、合规检查、多平台刊登全流程；并通过一个 DevTools 风格的可观测工作台，让你实时看到每个 Agent 的提示词、传递参数与协作轨迹。
 >
 > 🌐 **GitHub 仓库**：[https://github.com/23372/multi-agent-cross-border-assistant](https://github.com/23372/multi-agent-cross-border-assistant)
 
