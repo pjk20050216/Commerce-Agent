@@ -10,18 +10,27 @@
 
 ### 1.1 项目定位
 
-基于 LangChain/LangGraph 构建的**多智能体电商购物助手**。系统通过多个专业 Agent 协同工作，实现商品营销图片和视频的自动化生成、合规检查与多平台刊登。
+基于 LangChain/LangGraph 构建的**多智能体电商购物助手**，同时覆盖**商家侧**与**消费者侧**：
+
+- **商家侧**：多个专业 Agent 协同工作，实现商品营销图片和视频的自动化生成、合规检查与多平台刊登；
+- **消费者侧**：10 个 Agent 组成「虚拟买手团」（协同选品与比价）、「售后纠纷仲裁庭」（证据链与话术）、
+  「直播购物分身」（实时摘要与决策辅助）。
+
+两侧共用同一个 FastAPI 服务、同一套多租户隔离与同一套可观测体系。
 
 ### 1.2 核心能力
 
 | 能力 | 描述 |
 |------|------|
-| 🤖 多 Agent 协作 | 7 个专业 Agent 协同工作，分工明确 |
+| 🤖 多 Agent 协作 | 商家侧 7 个专业 Agent 协同工作，分工明确 |
 | 🖼️ 智能图片生成 | 主图、场景图、卖点图自动生成 |
 | 🎬 视频分镜生成 | 智能分镜设计 + 视频合成 |
 | 🎨 创意自动策划 | 风格推荐、配色方案设计 |
 | ✅ 质量自动审核 | 内容质量检测、合规审核 |
 | 📚 RAG 知识增强 | 企业知识库检索增强，提升生成质量 |
+| 🛒 虚拟买手团 | 风格顾问 / 性价比分析师 / 质检员三路并行，合成买手决策卡 |
+| ⚖️ 纠纷仲裁庭 | 事实还原 + 规则库匹配（附法条）+ 三套维权话术 |
+| 📺 直播购物分身 | 口播关键信息抽取 + 弹幕口碑 + 报价触发一键比价 |
 
 ### 1.3 技术栈
 
@@ -126,7 +135,7 @@ multi-agent-ecommerce-shopping-assistant/
 ├── uv.lock                 # 依赖锁定文件
 │
 ├── src/                    # 后端源码
-│   ├── agents/             # Agent 实现
+│   ├── agents/             # Agent 实现（25 个：视觉 7 + RAG 4 + 刊登 4 + 消费者侧 10）
 │   │   ├── base.py         # Agent 基类
 │   │   ├── orchestrator.py # 编排调度 Agent
 │   │   ├── requirement_analyzer.py  # 需求分析 Agent
@@ -134,33 +143,60 @@ multi-agent-ecommerce-shopping-assistant/
 │   │   ├── visual_designer.py       # 视觉设计 Agent
 │   │   ├── image_generator.py       # 图片生成 Agent
 │   │   ├── video_generator.py       # 视频生成 Agent
-│   │   └── quality_reviewer.py      # 质量审核 Agent
+│   │   ├── quality_reviewer.py      # 质量审核 Agent
+│   │   ├── rag_*.py                 # RAG 增强版 Agent
+│   │   ├── listing_*.py             # 刊登链路 Agent
+│   │   ├── consumer_base.py         # 消费者侧基类（LLM 可选）
+│   │   ├── buyer_style_advisor.py   # 风格顾问
+│   │   ├── buyer_value_analyst.py   # 性价比分析师
+│   │   ├── buyer_quality_inspector.py  # 质检员
+│   │   ├── buyer_decision_maker.py  # 决策官
+│   │   ├── buyer_review_lexicon.py  # 差评词库 + 类目退货率基准
+│   │   ├── price_analysis.py        # 比价聚合（买手团与直播共用）
+│   │   ├── dispute_fact_restorer.py # 事实还原
+│   │   ├── dispute_rule_interpreter.py  # 规则解读
+│   │   ├── dispute_negotiator.py    # 话术生成
+│   │   ├── dispute_rules.py         # 平台争议规则库
+│   │   ├── live_subtitle_summarizer.py  # 口播摘要
+│   │   ├── live_danmaku_sentiment.py    # 弹幕情感
+│   │   ├── live_price_comparator.py     # 一键比价
+│   │   └── live_lexicon.py          # 口播关键词与弹幕词典
 │   │
 │   ├── graph/              # LangGraph 状态图
 │   │   ├── state.py        # AgentState 定义
-│   │   └── workflow.py     # 工作流构建
+│   │   ├── workflow.py     # 视觉生成工作流
+│   │   ├── listing_state.py / listing_workflow.py    # 刊登
+│   │   ├── buyer_state.py / buyer_workflow.py        # 买手团（三路并行）
+│   │   ├── dispute_state.py / dispute_workflow.py    # 仲裁庭（三段串行）
+│   │   └── live_state.py / live_workflow.py          # 直播分身（增量合并）
 │   │
 │   ├── models/             # 数据模型
 │   │   ├── product.py      # 商品信息模型
 │   │   ├── creative.py     # 创意方案模型
 │   │   ├── storyboard.py   # 分镜脚本模型
-│   │   └── assets.py       # 生成资产模型
+│   │   ├── assets.py       # 生成资产模型
+│   │   ├── listing.py      # 刊登模型
+│   │   ├── buyer.py        # 买手决策卡 / 比价 / 风格画像
+│   │   ├── dispute.py      # 仲裁案件 / 裁决 / 话术
+│   │   └── live.py         # 直播快照 / 关键信息 / 弹幕情感
 │   │
 │   ├── api/                # API 层
-│   │   ├── router/         # 路由定义
-│   │   │   ├── health.py   # 健康检查
-│   │   │   ├── products.py # 商品管理
-│   │   │   └── tasks.py    # 任务管理
+│   │   ├── router/         # 路由定义（17 个模块，含 buyer/dispute/live）
 │   │   ├── schema/         # 请求/响应模型
 │   │   └── service/        # 服务层
 │   │       ├── redis_client.py    # Redis 客户端
 │   │       └── task_manager.py    # 任务管理器
 │   │
 │   ├── db/                 # 数据库模块
-│   │   ├── __init__.py     # 模块导出
 │   │   ├── postgres.py     # PostgreSQL 连接管理
-│   │   ├── models.py       # SQLAlchemy 模型
+│   │   ├── models.py       # 知识库 / 商品 / 任务模型
+│   │   ├── listing_models.py    # 刊登模型
+│   │   ├── consumer_models.py   # 消费者侧三张表
 │   │   └── vector_store.py # 向量存储接口
+│   │
+│   ├── clients/            # 外部厂商客户端
+│   │   ├── price_search.py # 全网比价数据源（ES / 采集服务 / 模拟）
+│   │   └── ...             # LLM / 图片 / 视频厂商
 │   │
 │   ├── rag/                # RAG 检索增强模块
 │   │   ├── __init__.py     # 模块导出
@@ -327,6 +363,62 @@ class AgentState(BaseModel):
     rag_enabled: bool         # 是否启用 RAG
 ```
 
+#### 3.2.5 消费者侧模块 (`src/agents/buyer_* | dispute_* | live_*`)
+
+三组 Agent 共用 `ConsumerAgentBase`：规则为主干、LLM 只做表述增强，缺 API Key 时自动降级为规则结果。
+
+**虚拟买手团**
+
+| Agent | 职责 | 输入 | 输出 |
+|-------|------|------|------|
+| `StyleAdvisorAgent` | 行为权重(1/2/3/4)统计风格与价格带，计算匹配分 | BrowsingRecord[] | StyleProfile, style_fit |
+| `ValueAnalystAgent` | 调用比价数据源，聚合全网报价与历史曲线 | CandidateProduct | PriceComparison |
+| `QualityInspectorAgent` | 差评词库挖掘 + 退货率基准对比 | CandidateProduct.reviews | QualityAssessment |
+| `DecisionMakerAgent` | 加权评分 + 风险惩罚 + 理由/预警合成 | 三路结论 | BuyerDecisionCard |
+
+**售后纠纷仲裁庭**
+
+| Agent | 职责 | 输入 | 输出 |
+|-------|------|------|------|
+| `FactRestorerAgent` | 证据归一化、时间线、事实标记、证据缺口 | 聊天/物流/开箱 | FactSheet, facts |
+| `RuleInterpreterAgent` | 规则库匹配 + 责任聚合 + 赔付建议 + 时效提示 | facts, 上下文 | ArbitrationVerdict |
+| `NegotiatorAgent` | 三语气话术，仅引用命中条款 | FactSheet, verdict | ComplaintDraft[] |
+
+**直播购物分身**
+
+| Agent | 职责 | 输入 | 输出 |
+|-------|------|------|------|
+| `SubtitleSummarizerAgent` | 口播关键信息抽取（价格/限量/赠品/时效/承诺/规格） | TranscriptSegment[] | LiveKeyPoint[] |
+| `DanmakuSentimentAgent` | 弹幕情感、热度、口碑标签 | DanmakuItem[] | SentimentBreakdown |
+| `PriceComparatorAgent` | 报价触发全网比价 | LiveKeyPoint[] | LivePriceAlert |
+
+**规则底座模块**
+
+| 模块 | 内容 |
+|------|------|
+| `buyer_review_lexicon.py` | 60+ 差评关键词 → 缺陷类别 + 严重度；类目退货率基准；贝叶斯平滑参数 |
+| `dispute_rules.py` | 14 条争议规则（事实条件 + 法条摘要 + 倾向方），`match_rules` / `aggregate_responsibility` |
+| `live_lexicon.py` | 价格正则、六类关键信息关键词、弹幕正负向词典与否定前缀 |
+| `price_analysis.py` | 比价聚合、`PriceVerdict` 判定、性价比折算（三处共用同一口径） |
+
+**数据源与降级**
+
+| 数据源 | 优先级 | 缺省行为 |
+|--------|--------|----------|
+| `EsPriceSearchBackend` | 1 | 需 `ELASTICSEARCH_URL`；读 `product_prices` 索引 |
+| `CrawlerPriceSearchBackend` | 2 | 需 `PRICE_CRAWLER_ENDPOINT`；本项目只定义契约 |
+| `MockPriceSearchBackend` | 3 | 确定性模拟，`is_mock=True`，决策卡与比价提醒显式标注 |
+
+`ALLOW_MOCK_SOURCES=false` 且前两者未配置时，比价返回「数据源不可用」，不伪造价格。
+
+**持久化表**（`src/db/consumer_models.py`）
+
+| 表 | 关键列 | 说明 |
+|----|--------|------|
+| `buyer_decision_cards` | tenant_id, user_id, card_id, overall_score, recommendation, payload | 决策卡全量 JSON |
+| `dispute_cases` | tenant_id, case_id, order_id, responsibility, confidence, payload | 案件全量 JSON |
+| `live_sessions` | tenant_id, session_id, room_id, status, payload, ended_at | 最新快照 JSON |
+
 ---
 
 ## 四、工作流设计
@@ -421,6 +513,18 @@ class AgentState(BaseModel):
 | `/api/v1/tasks` | POST | 创建生成任务 |
 | `/api/v1/tasks/{id}` | GET | 获取任务状态 |
 | `/api/v1/tasks/{id}/cancel` | POST | 取消任务 |
+| `/api/v1/buyer/decisions` | POST/GET | 生成决策卡 / 历史列表 |
+| `/api/v1/buyer/decisions/{card_id}` | GET | 决策卡详情 |
+| `/api/v1/buyer/compare` | POST | 全网比价 |
+| `/api/v1/dispute/cases` | POST/GET | 提交仲裁 / 案件列表 |
+| `/api/v1/dispute/cases/{case_id}` | GET | 案件详情 |
+| `/api/v1/dispute/cases/{case_id}/draft` | POST | 重生成指定语气话术 |
+| `/api/v1/live/sessions` | POST/GET | 创建直播会话 / 会话列表 |
+| `/api/v1/live/sessions/{id}/ingest` | POST | 推入字幕与弹幕 |
+| `/api/v1/live/sessions/{id}/snapshot` | GET | 最新快照 |
+| `/api/v1/live/sessions/{id}/end` | POST | 结束会话 |
+| `/api/v1/live/sessions/{id}/ws` | WS | 直播快照实时推送 |
+| `/api/v1/live/price-check` | POST | 一键比价 |
 
 ### 5.2 请求示例
 
@@ -468,6 +572,13 @@ POST /api/v1/tasks
 | `LLM_MODEL` | LLM 模型名称 | `qwen3.5-flash` |
 | `IMAGE_MODEL` | 图像生成模型 | `wanx-v1` |
 | `VIDEO_MODEL` | 视频生成模型 | `kling-v1` |
+| `CONSUMER_FEATURES_ENABLED` | 启用消费者侧三套能力 | `true` |
+| `PRICE_SEARCH_BACKEND` | 比价数据源：auto/es/crawler/mock | `auto` |
+| `ELASTICSEARCH_URL` | ES 地址，配置后 auto 优先走 ES | 空 |
+| `PRICE_CRAWLER_ENDPOINT` | 独立采集服务地址 | 空 |
+| `ALLOW_MOCK_SOURCES` | 允许降级为模拟比价数据 | `true` |
+| `BUYER_WEIGHT_STYLE/VALUE/QUALITY` | 决策卡三项权重（自动归一化） | 0.3 / 0.4 / 0.3 |
+| `LIVE_DANMAKU_WINDOW_SECONDS` | 弹幕情感统计窗口 | `120` |
 
 ### 6.2 配置类
 

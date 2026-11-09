@@ -1,4 +1,4 @@
-﻿"""
+"""
 API 路由模块。
 
 Description:
@@ -10,12 +10,15 @@ from fastapi import APIRouter
 from src.api.router.adapter_config import router as adapter_config_router
 from src.api.router.assets import router as assets_router
 from src.api.router.auth import router as auth_router
+from src.api.router.buyer import router as buyer_router
 from src.api.router.conversation import router as conversation_router
 from src.api.router.dashboard import router as dashboard_router
+from src.api.router.dispute import router as dispute_router
 from src.api.router.evaluation import router as evaluation_router
 from src.api.router.health import router as health_router
 from src.api.router.knowledge import router as knowledge_router
 from src.api.router.knowledge_graph import router as knowledge_graph_router
+from src.api.router.live import router as live_router
 from src.api.router.listing import router as listing_router
 from src.api.router.listing_push import router as listing_push_router
 from src.api.router.model_providers import router as model_providers_router
@@ -40,6 +43,10 @@ api_router.include_router(dashboard_router, prefix="/dashboard", tags=["仪表�
 api_router.include_router(assets_router, prefix="/assets", tags=["资产管理"])
 api_router.include_router(conversation_router, prefix="/ai", tags=["AI会话记录"])
 api_router.include_router(model_providers_router, prefix="/model-providers", tags=["模型厂商"])
+# 消费者侧：虚拟买手团 / 售后仲裁庭 / 直播购物分身
+api_router.include_router(buyer_router, prefix="/buyer", tags=["虚拟买手团"])
+api_router.include_router(dispute_router, prefix="/dispute", tags=["纠纷仲裁庭"])
+api_router.include_router(live_router, prefix="/live", tags=["直播购物分身"])
 
 __all__ = [
     "api_router",
@@ -52,4 +59,7 @@ __all__ = [
     "dashboard_router",
     "assets_router",
     "model_providers_router",
+    "buyer_router",
+    "dispute_router",
+    "live_router",
 ]

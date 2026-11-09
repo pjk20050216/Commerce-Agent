@@ -1,4 +1,4 @@
-﻿"""
+"""
 PostgreSQL 数据库连接管理。
 
 Description:
@@ -131,7 +131,12 @@ async def init_db() -> None:
         await _db_manager.init()
 
         # 导入所有模型以确保表定义被注册到 Base.metadata
-        from src.db import conversation_models, listing_models, models  # noqa: F401
+        from src.db import (  # noqa: F401
+            consumer_models,
+            conversation_models,
+            listing_models,
+            models,
+        )
 
         # 创建表
         async with _db_manager.get_engine().begin() as conn:

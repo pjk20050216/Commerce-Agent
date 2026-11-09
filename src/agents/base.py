@@ -1,4 +1,4 @@
-﻿"""
+"""
 Agent基类模块。
 
 Description:
@@ -23,7 +23,9 @@ if TYPE_CHECKING:
     pass
 
 # 状态类型变量
-StateT = TypeVar("StateT", bound="AgentState")
+# 说明：消费者侧（买手团/仲裁庭/直播分身）的状态模型是独立的工作流状态，
+# 不继承本模块的 AgentState，因此这里以 BaseModel 为界而非 AgentState。
+StateT = TypeVar("StateT", bound=BaseModel)
 
 
 class AgentRole(str, Enum):
@@ -36,6 +38,19 @@ class AgentRole(str, Enum):
     IMAGE_GENERATOR = "image_generator"
     VIDEO_GENERATOR = "video_generator"
     QUALITY_REVIEWER = "quality_reviewer"
+    # 消费者侧：虚拟买手团
+    BUYER_STYLE_ADVISOR = "buyer_style_advisor"
+    BUYER_VALUE_ANALYST = "buyer_value_analyst"
+    BUYER_QUALITY_INSPECTOR = "buyer_quality_inspector"
+    BUYER_DECISION_MAKER = "buyer_decision_maker"
+    # 消费者侧：售后纠纷仲裁庭
+    DISPUTE_FACT_RESTORER = "dispute_fact_restorer"
+    DISPUTE_RULE_INTERPRETER = "dispute_rule_interpreter"
+    DISPUTE_NEGOTIATOR = "dispute_negotiator"
+    # 消费者侧：直播购物分身
+    LIVE_SUBTITLE_SUMMARIZER = "live_subtitle_summarizer"
+    LIVE_DANMAKU_SENTIMENT = "live_danmaku_sentiment"
+    LIVE_PRICE_COMPARATOR = "live_price_comparator"
 
 
 class AgentStatus(str, Enum):

@@ -87,6 +87,25 @@
         </el-menu-item>
       </el-sub-menu>
 
+      <el-sub-menu index="consumer">
+        <template #title>
+          <el-icon><ShoppingBag /></el-icon>
+          <span>消费者侧</span>
+        </template>
+        <el-menu-item index="/buyer">
+          <el-icon><ShoppingCart /></el-icon>
+          <template #title>虚拟买手团</template>
+        </el-menu-item>
+        <el-menu-item index="/dispute">
+          <el-icon><ScaleToOriginal /></el-icon>
+          <template #title>售后仲裁庭</template>
+        </el-menu-item>
+        <el-menu-item index="/live">
+          <el-icon><VideoCamera /></el-icon>
+          <template #title>直播购物分身</template>
+        </el-menu-item>
+      </el-sub-menu>
+
       <el-sub-menu index="conversation">
         <template #title>
           <el-icon><ChatDotRound /></el-icon>

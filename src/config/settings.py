@@ -185,6 +185,78 @@ class Settings(BaseSettings):
         ),
     )
 
+    # ==================== 消费者侧（C 端）能力配置 ====================
+    consumer_features_enabled: bool = Field(
+        default=True,
+        description="启用消费者侧能力（虚拟买手团 / 纠纷仲裁庭 / 直播购物分身）",
+    )
+    price_search_backend: str = Field(
+        default="auto",
+        description=(
+            "比价数据源: auto/es/crawler/mock。"
+            "auto 按 es → crawler → mock 的顺序选择第一个可用实现"
+        ),
+    )
+    price_search_timeout_seconds: float = Field(
+        default=8.0, description="比价数据源请求超时（秒）"
+    )
+    price_history_days: int = Field(default=90, description="历史价格曲线回看天数")
+    allow_mock_sources: bool = Field(
+        default=True,
+        description=(
+            "是否允许在未配置 ES / 爬虫服务时降级为模拟比价数据源。"
+            "模拟数据会被显式标记 is_mock=True，仅供本地/CI 演示；"
+            "生产环境应设为 False，否则会产出'看似真实'的比价结论。"
+        ),
+    )
+    elasticsearch_url: str = Field(
+        default="", description="Elasticsearch 地址，如 http://localhost:9200"
+    )
+    elasticsearch_index: str = Field(
+        default="product_prices", description="全网价格索引名"
+    )
+    elasticsearch_username: str = Field(default="", description="Elasticsearch 用户名")
+    elasticsearch_password: str = Field(default="", description="Elasticsearch 密码")
+    price_crawler_endpoint: str = Field(
+        default="",
+        description="独立部署的采集服务地址（本项目只定义契约，不内置爬虫实现）",
+    )
+    price_crawler_api_key: str = Field(default="", description="采集服务调用密钥")
+
+    # ==================== 买手决策卡评分权重 ====================
+    buyer_weight_style: float = Field(default=0.3, ge=0, le=1, description="风格匹配权重")
+    buyer_weight_value: float = Field(default=0.4, ge=0, le=1, description="性价比权重")
+    buyer_weight_quality: float = Field(default=0.3, ge=0, le=1, description="质量口碑权重")
+    buyer_strong_buy_threshold: float = Field(
+        default=85.0, ge=0, le=100, description="综合评分达到该值输出「强烈推荐」"
+    )
+    buyer_buy_threshold: float = Field(
+        default=72.0, ge=0, le=100, description="综合评分达到该值输出「推荐」"
+    )
+    buyer_consider_threshold: float = Field(
+        default=60.0, ge=0, le=100, description="综合评分达到该值输出「谨慎考虑」"
+    )
+
+    # ==================== 直播购物分身配置 ====================
+    live_danmaku_window_seconds: int = Field(
+        default=120, description="弹幕情感与热度统计的滑动窗口（秒）"
+    )
+    live_price_alert_threshold: float = Field(
+        default=0.15,
+        ge=0,
+        le=1,
+        description="主播报价低于近期均价该比例时触发「值得冲」提醒",
+    )
+    live_max_key_points: int = Field(default=20, description="单个直播会话保留的关键信息上限")
+
+    # ==================== 纠纷仲裁配置 ====================
+    dispute_seven_day_return_days: int = Field(
+        default=7, ge=1, description="七日无理由退货窗口（《消费者权益保护法》第二十五条）"
+    )
+    dispute_quality_return_days: int = Field(
+        default=15, ge=1, description="质量问题退换货参考窗口（默认 15 天）"
+    )
+
     # ==================== 认证配置 ====================
     auth_enabled: bool = Field(default=True, description="是否启用 API Token 鉴权")
     auth_api_tokens_json: str = Field(
@@ -295,6 +367,27 @@ class Settings(BaseSettings):
         if not self.cors_allow_origins:
             return []
         return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
+
+    @property
+    def buyer_score_weights(self) -> dict[str, float]:
+        """获取买手决策卡的归一化评分权重。
+
+        三项权重之和可能不等于 1（用户可只关注其中一两项），这里统一归一化，
+        保证加权总分始终落在 0-100 区间。
+
+        Returns:
+            形如 {'style': 0.3, 'value': 0.4, 'quality': 0.3} 的归一化权重。
+        """
+        raw = {
+            "style": max(0.0, self.buyer_weight_style),
+            "value": max(0.0, self.buyer_weight_value),
+            "quality": max(0.0, self.buyer_weight_quality),
+        }
+        total = sum(raw.values())
+        if total <= 0:
+            # 权重全部为 0 时退化为等权，避免除零
+            return {key: 1 / 3 for key in raw}
+        return {key: value / total for key, value in raw.items()}
 
 
 @lru_cache

@@ -139,6 +139,34 @@ const routes: RouteRecordRaw[] = [
           icon: 'Setting'
         }
       },
+      // 消费者侧：虚拟买手团 / 售后仲裁庭 / 直播购物分身
+      {
+        path: 'buyer',
+        name: 'BuyerTeam',
+        component: () => import('@/views/buyer/index.vue'),
+        meta: {
+          title: '虚拟买手团',
+          icon: 'ShoppingBag'
+        }
+      },
+      {
+        path: 'dispute',
+        name: 'DisputeTribunal',
+        component: () => import('@/views/dispute/index.vue'),
+        meta: {
+          title: '售后仲裁庭',
+          icon: 'ScaleToOriginal'
+        }
+      },
+      {
+        path: 'live',
+        name: 'LiveShopping',
+        component: () => import('@/views/live/index.vue'),
+        meta: {
+          title: '直播购物分身',
+          icon: 'VideoCamera'
+        }
+      },
       // AI 会话记录
       {
         path: 'conversation',

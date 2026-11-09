@@ -18,9 +18,37 @@ class TestAgentRole:
         assert AgentRole.REQUIREMENT_ANALYZER.value == "requirement_analyzer"
 
     def test_all_roles_exist(self) -> None:
-        """测试所有角色都存在。"""
-        roles = list(AgentRole)
-        assert len(roles) == 7
+        """测试所有角色都存在。
+
+        角色分为三组：视觉生成 7 个、虚拟买手团 4 个、纠纷仲裁 3 个、直播分身 3 个，
+        合计 17 个。
+        """
+        roles = set(AgentRole)
+        expected = {
+            # 视觉生成
+            AgentRole.ORCHESTRATOR,
+            AgentRole.REQUIREMENT_ANALYZER,
+            AgentRole.CREATIVE_PLANNER,
+            AgentRole.VISUAL_DESIGNER,
+            AgentRole.IMAGE_GENERATOR,
+            AgentRole.VIDEO_GENERATOR,
+            AgentRole.QUALITY_REVIEWER,
+            # 虚拟买手团
+            AgentRole.BUYER_STYLE_ADVISOR,
+            AgentRole.BUYER_VALUE_ANALYST,
+            AgentRole.BUYER_QUALITY_INSPECTOR,
+            AgentRole.BUYER_DECISION_MAKER,
+            # 售后纠纷仲裁庭
+            AgentRole.DISPUTE_FACT_RESTORER,
+            AgentRole.DISPUTE_RULE_INTERPRETER,
+            AgentRole.DISPUTE_NEGOTIATOR,
+            # 直播购物分身
+            AgentRole.LIVE_SUBTITLE_SUMMARIZER,
+            AgentRole.LIVE_DANMAKU_SENTIMENT,
+            AgentRole.LIVE_PRICE_COMPARATOR,
+        }
+        assert roles == expected
+        assert len(roles) == 17
 
 
 class TestAgentStatus:

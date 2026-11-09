@@ -1,10 +1,15 @@
 # 多智能体电商购物助手
 
-把「一个模型对话式生成几张图」升级为面向**电商购物内容生产与多平台刊登**的多 Agent 协作运行时：
-LangGraph 状态图编排 7 个专业 Agent，从商品理解、创意策划、视觉设计，到图片/视频生成、质量审核，
-再接入刊登链路完成素材优化、多语言文案、平台合规检查与推送上架；全过程状态可追踪、可恢复、可复盘。
+一套多 Agent 协作运行时，同时服务**商家侧内容生产**与**消费者侧购物决策**：
 
-> 视觉生成、刊登工具、RAG 知识增强、AI 会话追踪共用同一个 FastAPI 服务与同一套多租户数据隔离。
+- **商家侧**：LangGraph 状态图编排 7 个专业 Agent，从商品理解、创意策划、视觉设计，
+  到图片/视频生成、质量审核，再接入刊登链路完成素材优化、多语言文案、平台合规检查与推送上架；
+- **消费者侧**：另外 10 个 Agent 组成「虚拟买手团」「售后纠纷仲裁庭」「直播购物分身」，
+  覆盖协同选品比价、差评排雷、纠纷举证与直播间的实时决策辅助。
+
+两侧共用同一个 FastAPI 服务与同一套多租户数据隔离，全过程状态可追踪、可恢复、可复盘。
+
+> 视觉生成、刊登工具、消费者侧三套能力、RAG 知识增强、AI 会话追踪共用同一个服务与同一套数据模型。
 
 ## 为什么需要多 Agent 编排
 
@@ -40,6 +45,10 @@ LangGraph 状态图编排 7 个专业 Agent，从商品理解、创意策划、�
 | 实时推送 | 任务状态经 WebSocket 推送前端，无需轮询 | [`src/api/router/tasks.py`](src/api/router/tasks.py) |
 | 多租户隔离 | 全部查询按 `tenant_id` 过滤，API Token（SHA256 + Scope）鉴权 | [`src/auth/`](src/auth/)、[`src/db/repository.py`](src/db/repository.py) |
 | 模型厂商管理 | DB 驱动 + Settings 回退，支持运行时切换与连通性测试 | [`src/api/router/model_providers.py`](src/api/router/model_providers.py)、[`src/clients/provider_factory.py`](src/clients/provider_factory.py) |
+| 虚拟买手团 | 风格顾问 ‖ 性价比分析师 ‖ 质检员三路并行 → 决策官合成买手决策卡（评分 / 理由 / 预警） | [`src/graph/buyer_workflow.py`](src/graph/buyer_workflow.py)、[`src/agents/buyer_style_advisor.py`](src/agents/buyer_style_advisor.py) |
+| 全网比价 | ES 价格索引 / 独立采集服务 / 模拟数据三级降级，历史价格曲线与低位判断 | [`src/clients/price_search.py`](src/clients/price_search.py)、[`src/agents/price_analysis.py`](src/agents/price_analysis.py) |
+| 纠纷仲裁庭 | 事实还原 → 规则库匹配（附法条）→ 三套维权话术，输出责任方与置信度 | [`src/graph/dispute_workflow.py`](src/graph/dispute_workflow.py)、[`src/agents/dispute_rules.py`](src/agents/dispute_rules.py) |
+| 直播购物分身 | 口播关键信息抽取 + 弹幕情感口碑 + 报价触发一键比价，增量快照 + WebSocket | [`src/graph/live_workflow.py`](src/graph/live_workflow.py)、[`src/agents/live_subtitle_summarizer.py`](src/agents/live_subtitle_summarizer.py) |
 | AI 会话追踪 | Token 消耗、双币种费用估算、按模型/Agent 分解 | [`src/api/router/conversation.py`](src/api/router/conversation.py)、[`src/db/conversation_models.py`](src/db/conversation_models.py) |
 
 ## 架构
@@ -52,9 +61,13 @@ FastAPI（uvicorn）
         │
         ├── /api/v1/products /tasks /assets /dashboard     商品、任务、资产、仪表盘
         ├── /api/v1/listing/*                              刊登、合规、适配器配置
+        ├── /api/v1/buyer/*                                买手决策卡、全网比价
+        ├── /api/v1/dispute/*                              纠纷仲裁、维权话术
+        ├── /api/v1/live/*                                 直播会话、增量快照、一键比价
         ├── /api/v1/knowledge/* /evaluation/*              知识库、图谱、RAG 评估
         ├── /api/v1/ai/* /model-providers                  会话追踪、厂商管理
-        └── /api/v1/tasks/{id}/ws                          WebSocket 实时状态
+        └── /api/v1/tasks/{id}/ws                           WebSocket 实时状态
+                                                          /api/v1/live/sessions/{id}/ws
         │
         ▼
 ┌───────────────── LangGraph 运行时 ─────────────────┐
@@ -71,6 +84,13 @@ FastAPI（uvicorn）
 │  知识库工作流                                       │
 │    QueryAnalyzer → StrategyRouter →                │
 │    HybridRetriever → RRF Fuser → Answer            │
+│                                                     │
+│  消费者侧工作流                                     │
+│    买手团：StyleAdvisor ‖ ValueAnalyst ‖            │
+│            QualityInspector → DecisionMaker → END  │
+│    仲裁庭：FactRestorer → RuleInterpreter →        │
+│            Negotiator → END                        │
+│    直播分身：Subtitle → [Danmaku ‖ Price] → Merge   │
 └─────────────────────────────────────────────────────┘
         │                    │                    │
         ▼                    ▼                    ▼
@@ -98,7 +118,7 @@ POST /api/v1/tasks
 
 ```
 src/
-  agents/                  15 个 Agent（7 视觉生成 + 4 RAG 增强 + 4 刊登）
+  agents/                  25 个 Agent（7 视觉生成 + 4 RAG 增强 + 4 刊登 + 10 消费者侧）
     base.py                Agent 基类（LLM 调用、日志、Token 统计）
     orchestrator.py        编排调度
     requirement_analyzer.py 需求分析
@@ -109,31 +129,49 @@ src/
     quality_reviewer.py    质量审核
     rag_*.py               RAG 增强版（需求分析 / 创意策划 / 质量审核 / 图片生成）
     listing_*.py           刊登链路（导入、素材、文案、合规、适配器、推送、限流、重试）
+    consumer_base.py       消费者侧基类（LLM 可选，缺 Key 时走规则）
+    buyer_*.py             虚拟买手团（风格顾问 / 性价比分析师 / 质检员 / 决策官）
+    buyer_review_lexicon.py 差评缺陷词库与类目退货率基准
+    price_analysis.py      比价结果聚合与性价比折算（买手团与直播共用）
+    dispute_*.py           纠纷仲裁（事实还原 / 规则解读 / 话术生成）
+    dispute_rules.py       平台争议规则库（含法条摘要）
+    live_*.py              直播分身（字幕摘要 / 弹幕情感 / 一键比价）
+    live_lexicon.py        口播关键词与弹幕情感词典
   graph/
     state.py               AgentState 定义（含 RAG 与可观测字段）
     workflow.py            视觉生成状态图
     listing_state.py       刊登状态
     listing_workflow.py    刊登状态图（含并行分支）
-  models/                  商品、创意、分镜、资产、刊登 Pydantic 模型
+    buyer_state.py         买手团状态
+    buyer_workflow.py      买手团状态图（三路并行）
+    dispute_state.py       仲裁庭状态
+    dispute_workflow.py    仲裁庭状态图（三段串行）
+    live_state.py          直播状态
+    live_workflow.py       直播状态图（增量合并）
+  models/                  商品、创意、分镜、资产、刊登、买手、纠纷、直播 Pydantic 模型
   api/
-    router/                14 个路由模块（health/auth/products/tasks/assets/listing/
+    router/                17 个路由模块（health/auth/products/tasks/assets/listing/
                            knowledge/knowledge_graph/evaluation/dashboard/
-                           conversation/model_providers/adapter_config/listing_push）
+                           conversation/model_providers/adapter_config/listing_push/
+                           buyer/dispute/live）
     schema/                请求/响应 DTO
     service/               Redis 客户端、任务管理器、资产落库、会话记录
-  db/                      PostgreSQL 连接、ORM 模型、仓储、向量存储、加密字段
+  db/                      PostgreSQL 连接、ORM 模型、仓储、向量存储、加密字段、
+                           消费者侧三张表（决策卡 / 仲裁案件 / 直播会话）
   rag/                     Embedding、检索器、分块、文档处理、混合检索、重排序、
                            Query 改写、图谱构建/检索、记忆存储与分类
   knowledge/               知识图谱、文档摄入、知识库 Agent 工作流
   auth/                    API Token 鉴权、租户上下文
-  clients/                 通义万象、可灵、OpenAI 兼容 LLM/图片、厂商工厂
+  clients/                 通义万象、可灵、OpenAI 兼容 LLM/图片、厂商工厂、
+                           全网比价数据源（ES / 采集服务 / 模拟）
   storage/                 存储抽象、本地实现、工厂
   config/settings.py       pydantic-settings 配置
 frontend/src/
-  views/                   16 个页面（仪表盘、商品、任务、工作台、知识库、刊登、厂商…）
+  views/                   19 个页面（仪表盘、商品、任务、工作台、知识库、刊登、
+                           虚拟买手团、售后仲裁庭、直播购物分身、厂商…）
   components/workbench/    DAG、详情面板、提示词轨迹、子调用、指标
   api/ types/ stores/      请求封装、类型定义、Pinia 状态
-tests/                     653 个测试（agents / api / db / graph / rag / knowledge / storage）
+tests/                     719 个测试（agents / api / db / graph / rag / knowledge / storage）
 docs-site/                 MkDocs 文档站
 ```
 
@@ -215,6 +253,17 @@ Windows 下可直接双击 **`一键启动.bat`**：自动检查 `.venv` 与前�
 | POST | `/api/v1/listing/tasks/{id}/push` | 推送平台 |
 | GET | `/api/v1/listing/tasks/{id}/push-results` | 推送结果 |
 | GET/POST | `/api/v1/listing/adapter-configs` | 平台适配器配置 |
+| POST | `/api/v1/buyer/decisions` | 生成买手决策卡 |
+| GET | `/api/v1/buyer/decisions`、`/{card_id}` | 决策卡历史 / 详情 |
+| POST | `/api/v1/buyer/compare` | 单独发起全网比价 |
+| POST | `/api/v1/dispute/cases` | 提交纠纷仲裁 |
+| GET | `/api/v1/dispute/cases`、`/{case_id}` | 案件历史 / 详情 |
+| POST | `/api/v1/dispute/cases/{case_id}/draft` | 重新生成指定语气话术 |
+| POST | `/api/v1/live/sessions` | 创建直播会话 |
+| POST | `/api/v1/live/sessions/{id}/ingest`、`/end` | 推入字幕/弹幕 / 结束会话 |
+| GET | `/api/v1/live/sessions`、`/{id}/snapshot` | 会话列表 / 最新快照 |
+| WS | `/api/v1/live/sessions/{id}/ws` | 直播快照实时推送 |
+| POST | `/api/v1/live/price-check` | 一键比价 |
 | GET/POST | `/api/v1/knowledge/documents` | 知识库文档 |
 | POST | `/api/v1/knowledge/documents/upload` | 上传文档 |
 | POST | `/api/v1/knowledge/search`、`/search/hybrid` | 向量 / 混合检索 |
@@ -261,6 +310,77 @@ registry.register(Platform.AMAZON_US, AmazonAdapter)
 registry.register(Platform.EBAY, EbayAdapter)
 registry.register(Platform.SHOPIFY, ShopifyAdapter)
 ```
+
+## 消费者侧：三个场景
+
+三个场景都由 LangGraph 编排，但形态不同：买手团是**并行汇合**，仲裁庭是**串行流水**，
+直播分身是**增量合并**。
+
+### 1. 虚拟买手团 —— 协同选品与比价
+
+```
+POST /api/v1/buyer/decisions
+        │
+        ├─ StyleAdvisor          浏览/收藏/加购/购买记录 → 风格偏好与价格带（行为权重 1/2/3/4）
+        ├─ ValueAnalyst          全网报价 + 历史曲线 → 现在该不该买
+        └─ QualityInspector      差评缺陷词 + 退货率基准 → 质量风险
+                  │
+                  ▼
+            DecisionMaker        加权评分（风格 0.3 / 性价比 0.4 / 质量 0.3）→ 买手决策卡
+```
+
+决策卡包含综合评分与三项分解、推荐理由、风险预警（含数据可信度提示）、一句话行动建议。
+评分不是「模型感觉」，而是可复算的加权：`总分 = Σ(分项 × 权重) − 风险惩罚`，
+分项与权重都会随卡返回，便于复核。
+
+**比价数据源三级降级**（`PRICE_SEARCH_BACKEND=auto` 时按顺序探测）：
+
+| 顺序 | 实现 | 说明 |
+|---|---|---|
+| 1 | Elasticsearch | 读取自建价格索引 `product_prices`，按天聚合历史最低价 |
+| 2 | 采集服务 | `POST {endpoint}/search`、`/history`，本项目只定义契约 |
+| 3 | 模拟数据 | 确定性生成，`is_mock=True`，决策卡顶部明确标注「模拟数据」 |
+
+> **关于爬虫**：本项目**不内置**任何站点的抓取实现。抓取第三方商品页涉及目标站点的服务条款与
+> robots 协议，合规性取决于具体站点与用途，因此这里只提供采集服务的调用契约与数据结构，
+> 由部署方接入合规数据源。模拟数据源的作用是让流程在无外部依赖时可跑通、可测试。
+
+### 2. 售后纠纷仲裁庭 —— 多角度证据链
+
+```
+FactRestorer ──▶ RuleInterpreter ──▶ Negotiator
+ 事实时间线        规则库匹配           投诉 / 申诉 / 协商
+ 证据缺口          责任方 + 置信度      四段式正文 + 条款引用
+```
+
+- **事实还原**：把聊天记录、物流轨迹、开箱凭证归一化为 `E1..En` 证据项，按时间排序，
+  并推导 `received` / `opened` / `quality_issue` / `within_seven_days` 等事实标记；
+- **规则解读**：14 条平台争议规则按「声明式事实条件」匹配，避免因措辞不同漏判；
+  每条规则附法律条款摘要，同向权重占比决定责任方，双方差距小于 20% 判为共担；
+- **话术生成**：只引用本次命中的真实条款，不编造法条与金额，输出三种语气（投诉 / 申诉 / 协商），
+  正文统一为「事实 → 诉求 → 依据 → 证据」四段式。
+
+证据缺口会单独列出（缺签收时间、缺开箱影像、主张假冒缺鉴定报告等）——判定「证据不足」
+比给出一个没有依据的结论更负责。输出带免责声明：仅供争议处理参考，不构成法律意见。
+
+### 3. 直播购物分身 —— 实时摘要与决策辅助
+
+```
+SubtitleSummarizer ─┬─▶ DanmakuSentiment   弹幕情感 / 热度 / 口碑标签
+                    └─▶ PriceComparator    报价触发的全网比价
+                              │
+                              ▼
+                            Merge          增量合并进会话快照
+```
+
+- **口播摘要**：正则 + 短语规则抽取「限量 500 件」「拍一发三」「前 100 名加赠」等信息，
+  一句话只保留优先级最高的类型（价格 > 赠品 > 限量 > 时效 > 承诺 > 规格），避免同类噪音；
+- **弹幕情感**：词典 + 频次统计，输出正向占比、情感分、每分钟热度与口碑标签，
+  「太贵」「犹豫」这类词单独成为标签，不把少量样本夸大成结论；
+- **一键比价**：识别到报价立即拉历史曲线，低于近 90 天均价 15% 时提示「值得冲」；
+- **实时通道**：`WS /api/v1/live/sessions/{id}/ws`，客户端按批推送字幕与弹幕，服务端回推合并快照。
+
+每批只处理增量、结果合并到快照，长直播不会因为累计数据而越跑越慢。
 
 ## RAG 知识增强
 
@@ -323,11 +443,13 @@ registry.register(Platform.SHOPIFY, ShopifyAdapter)
 | 本地 Embedding 模型 | `RAG_ENABLED=false` 可跳过检索；未下载模型时 RAG 功能不可用 |
 | OSS | `STORAGE_TYPE=local` 落本地 `./output`，经 `/static` 暴露 |
 | 平台适配器 | 未注册的平台推送返回明确的 `push_failed` 与原因 |
+| 比价数据源（ES / 采集服务） | 回退到模拟数据并标记 `is_mock=True`；`ALLOW_MOCK_SOURCES=false` 时明确报错而非编造价格 |
+| 消费者侧开关 | `CONSUMER_FEATURES_ENABLED=false` 时 `/buyer`、`/dispute`、`/live` 统一返回 403 |
 
 ## 测试
 
 ```bash
-# 全量测试（653 passed）
+# 全量测试（719 passed）
 uv run pytest
 
 # 指定目录
@@ -335,7 +457,7 @@ uv run pytest tests/test_models tests/test_agents
 ```
 
 覆盖：模型契约、Agent 行为、工作流路由、刊登与合规、多租户隔离、WebSocket 鉴权、
-RAG 检索与重排、知识图谱、存储后端、资产落库。
+RAG 检索与重排、知识图谱、存储后端、资产落库、买手决策卡、纠纷仲裁规则匹配、直播增量合并。
 
 ## 设计要点
 
@@ -360,6 +482,9 @@ RAG 检索与重排、知识图谱、存储后端、资产落库。
 - 视频生成依赖第三方异步接口，最长等待受厂商限制，超时按失败处理；
 - eBay 适配器为 HTTP 模拟实现，接入真实交易 API 需替换签名与端点；
 - 合规规则为规则表驱动，尚未接入 LLM 语义审核；
+- 全网比价默认走模拟数据源，真实报价需部署 ES 价格索引或采集服务；
+- 纠纷规则库覆盖 14 类常见场景，各平台细则差异较大，落地时需按目标平台补充；
+- 直播分身以规则抽取为主，字幕依赖上游 ASR 提供分片，弹幕情感为词典判定而非语义模型；
 - 本地存储适合单机，多实例部署应切换到 OSS 并保证 `/static` 由对象存储或 CDN 承载；
 - 前端为单体 Vue 工程，构建产物经 Nginx 托管。
 
